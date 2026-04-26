@@ -71,7 +71,6 @@ Pays a Lightning invoice.
 Fetches job status.
 
 - Calls (first one that exists):
-  - `GET /api/foreman/job/<id>/status`
   - `GET /api/maestro/job/<id>/status`
   - `GET /api/maestro/job/<id>`
 
@@ -79,6 +78,6 @@ Fetches job status.
 
 Polls job status until complete (or timeout).
 
-- Polls: `GET /api/foreman/job/<id>/status` (with fallbacks above)
+- Polls: `GET /api/maestro/job/<id>/status` (with fallbacks above)
 - Returns: `final_video_url` when available
 

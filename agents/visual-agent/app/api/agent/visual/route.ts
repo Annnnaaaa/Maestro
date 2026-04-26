@@ -189,8 +189,13 @@ export async function POST(req: Request) {
   const payment_hash = body.payment_hash?.trim();
   const spec = body.spec ?? {};
   const script = body.script?.trim() ?? "";
-  if (!payment_hash) {
-    return withCors({ error: "payment_hash required" }, { status: 400 });
+  const audio_url = body.audio_url?.trim();
+  if (!payment_hash) return withCors({ error: "payment_hash required" }, { status: 400 });
+  if (!body.spec || !script || !audio_url) {
+    return withCors(
+      { error: "Missing required inputs: spec, script, audio_url" },
+      { status: 400 }
+    );
   }
 
   const ok = await verifyPaymentHash(payment_hash);
@@ -202,11 +207,11 @@ export async function POST(req: Request) {
   const base = origin(req);
 
   let totalSeconds = typeof spec.duration_seconds === "number" ? spec.duration_seconds : 15;
-  if (body.audio_url) {
+  if (audio_url) {
     try {
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "maestro-audio-"));
       const ap = path.join(tmp, "probe.mp3");
-      await downloadToFile(body.audio_url, ap);
+      await downloadToFile(audio_url, ap);
       totalSeconds = ffprobeDurationSec(ap);
       fs.rmSync(tmp, { recursive: true, force: true });
     } catch {
@@ -237,13 +242,13 @@ export async function POST(req: Request) {
       prompts,
       falKey,
       totalSeconds,
-      audioUrl: body.audio_url,
+      audioUrl: audio_url,
       videoOutAbs,
     });
     fs.rmSync(workDir, { recursive: true, force: true });
     return withCors({
       video_url: `${base}/video/${ts}.mp4`,
-      agent_id: "visual-agent",
+      agent_id: "visual-agent-v1",
       payment_hash,
     });
   } catch {
@@ -258,7 +263,7 @@ export async function POST(req: Request) {
     // FALLBACK: pre-generated demo when FFmpeg/FAL fails or is too slow — add /public/demo-video.mp4 for a working URL
     return withCors({
       video_url: `${base}/demo-video.mp4`,
-      agent_id: "visual-agent",
+      agent_id: "visual-agent-v1",
       payment_hash,
     });
   }

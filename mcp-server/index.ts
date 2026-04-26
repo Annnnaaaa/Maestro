@@ -81,9 +81,7 @@ function stubPaymentHash(): string {
 }
 
 async function jobStatus(base: string, jobId: string): Promise<JsonValue> {
-  // Foreman endpoint is expected by the hackathon demo.
   const urls = [
-    `${base}/api/foreman/job/${encodeURIComponent(jobId)}/status`,
     `${base}/api/maestro/job/${encodeURIComponent(jobId)}/status`,
     `${base}/api/maestro/job/${encodeURIComponent(jobId)}`,
   ];

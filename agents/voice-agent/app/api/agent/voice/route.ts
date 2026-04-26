@@ -33,8 +33,12 @@ export async function POST(req: Request) {
 
   const payment_hash = body.payment_hash?.trim();
   const script = body.script?.trim();
-  if (!payment_hash || !script) {
-    return withCors({ error: "payment_hash and script required" }, { status: 400 });
+  const voiceover_tone = body.voiceover_tone?.trim();
+  if (!payment_hash || !script || !voiceover_tone) {
+    return withCors(
+      { error: "Missing required inputs: payment_hash, script, voiceover_tone" },
+      { status: 400 }
+    );
   }
 
   const ok = await verifyPaymentHash(payment_hash);
@@ -48,7 +52,7 @@ export async function POST(req: Request) {
   }
 
   const openai = new OpenAI({ apiKey: key });
-  const voice = pickVoice(body.voiceover_tone);
+  const voice = pickVoice(voiceover_tone);
 
   const speech = await openai.audio.speech.create({
     model: "tts-1",
@@ -69,7 +73,7 @@ export async function POST(req: Request) {
   return withCors({
     audio_url,
     duration_ms,
-    agent_id: "voice-agent",
+    agent_id: "voice-agent-v1",
     payment_hash,
   });
 }

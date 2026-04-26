@@ -62,9 +62,7 @@ function stubPaymentHash() {
     return `stub_${randomHex(24)}`;
 }
 async function jobStatus(base, jobId) {
-    // Foreman endpoint is expected by the hackathon demo.
     const urls = [
-        `${base}/api/foreman/job/${encodeURIComponent(jobId)}/status`,
         `${base}/api/maestro/job/${encodeURIComponent(jobId)}/status`,
         `${base}/api/maestro/job/${encodeURIComponent(jobId)}`,
     ];

@@ -12,22 +12,52 @@ const SYSTEM =
 type Spec = {
   product_name: string;
   product_description: string;
-  duration_seconds: number;
   voiceover_tone: string;
+  target_audience?: string;
+  duration_seconds?: number;
 };
 
 export async function POST(req: Request) {
-  let body: { payment_hash?: string; spec?: Spec };
+  let body:
+    | { payment_hash?: string; spec?: Spec }
+    | {
+        payment_hash?: string;
+        product_name?: string;
+        product_description?: string;
+        target_audience?: string;
+        voiceover_tone?: string;
+        duration_seconds?: number;
+      };
   try {
-    body = (await req.json()) as { payment_hash?: string; spec?: Spec };
+    body = (await req.json()) as typeof body;
   } catch {
     return withCors({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const payment_hash = body.payment_hash?.trim();
-  const spec = body.spec;
-  if (!payment_hash || !spec?.product_name) {
-    return withCors({ error: "payment_hash and spec.product_name required" }, { status: 400 });
+  const payment_hash = (body as any).payment_hash?.trim() as string | undefined;
+  const spec: Spec | undefined =
+    (body as any).spec ??
+    (payment_hash
+      ? ({
+          product_name: (body as any).product_name,
+          product_description: (body as any).product_description,
+          target_audience: (body as any).target_audience,
+          voiceover_tone: (body as any).voiceover_tone,
+          duration_seconds: (body as any).duration_seconds,
+        } as Spec)
+      : undefined);
+
+  if (!payment_hash) {
+    return withCors({ error: "payment_hash required" }, { status: 400 });
+  }
+  if (!spec?.product_name || !spec.product_description || !spec.voiceover_tone || !spec.target_audience) {
+    return withCors(
+      {
+        error:
+          "Missing required inputs: product_name, product_description, target_audience, voiceover_tone",
+      },
+      { status: 400 }
+    );
   }
 
   const ok = await verifyPaymentHash(payment_hash);
@@ -44,6 +74,7 @@ export async function POST(req: Request) {
   const userPrompt = `Write a spoken script for a ${spec.duration_seconds ?? 15}-second short-form product video.
 Product: ${spec.product_name}
 Description: ${spec.product_description || "N/A"}
+Target audience: ${spec.target_audience || "general"}
 Voiceover tone: ${spec.voiceover_tone || "conversational"}
 Rules: maximum 50 words. Conversational tone matching the spec. Spoken words only — no scene directions, labels, or stage notes.`;
 
@@ -62,7 +93,7 @@ Rules: maximum 50 words. Conversational tone matching the spec. Spoken words onl
 
   return withCors({
     script,
-    agent_id: "script-agent",
+    agent_id: "script-agent-v1",
     payment_hash,
   });
 }
