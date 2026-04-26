@@ -100,9 +100,16 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-feature-settings: "ss01", "cv11";
   }
   .font-mono {
     font-family: var(--font-mono);
+    font-feature-settings: "calt", "ss01";
   }
 }
 

@@ -12,15 +12,8 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
     maestro, agents, payments, log,
     consumerKind, videoReady, consumerPaid, payMaestro,
     incomingAgentRequest, setIncomingAgentRequest, startJob, resetForNextJob,
-    matchedAgentIds, capabilityToast, setCapabilityToast,
-    finalVideoUrl, syncMarketplace,
-    pricing,
+    requiredTags, matchedAgentIds, capabilityToast, setCapabilityToast,
   } = useMaestro();
-
-  // Keep marketplace synced with backend.
-  useEffect(() => {
-    void syncMarketplace().catch(() => {});
-  }, [syncMarketplace]);
 
   // Auto-dismiss capability toast
   useEffect(() => {
@@ -32,33 +25,33 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
   const planning = jobStatus === "planning";
 
   return (
-    <div className="grid-bg min-h-[calc(100vh-65px)]">
-      <div className="mx-auto max-w-[1600px] px-6 py-6 space-y-6">
+    <div className="grid-bg min-h-[calc(100svh-65px)]">
+      <div className="mx-auto max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         {/* Banner */}
         <motion.div
           layout
-          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border gradient-surface p-4 shadow-elevated"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border gradient-surface p-3 shadow-elevated sm:p-4"
         >
-          <div className="flex items-center gap-4">
-            <div className="font-mono text-xs tracking-wider text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="font-mono text-[10px] tracking-wider text-muted-foreground sm:text-xs">
               JOB #{String(jobNumber).padStart(3, "0")}
             </div>
-            <div className="text-base font-semibold">
+            <div className="text-sm font-semibold sm:text-base">
               {jobTitle || "Awaiting brief…"}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <ConsumerBadge kind={consumerKind} />
             <StatusPill status={jobStatus} />
           </div>
         </motion.div>
 
         {/* MARKETPLACE — full-width grid of agent cards */}
-        <div className="rounded-2xl border border-border bg-surface/60 p-5 shadow-elevated">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground">AGENT MARKETPLACE</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                 {agents.length + 1} agents registered · 1 orchestrator · {agents.length} specialists
               </p>
             </div>
@@ -104,8 +97,6 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             onPay={payMaestro}
             onNext={resetForNextJob}
             jobStatus={jobStatus}
-            videoUrl={finalVideoUrl}
-            pricing={pricing}
           />
 
           <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated">
@@ -162,6 +153,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
         {planning && (
           <PlanningOverlay
             request={jobRequest || jobTitle}
+            requiredTags={requiredTags}
             matched={matchedAgentIds}
             agents={agents}
             maestroAction={maestroAction}
@@ -176,7 +168,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 right-6 z-50 w-80 rounded-2xl border border-agent/50 bg-surface-elevated p-4 shadow-[0_0_32px_-8px_var(--agent)]"
+            className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-agent/50 bg-surface-elevated p-4 shadow-[0_0_32px_-8px_var(--agent)] sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-80"
           >
             <div className="mb-2 flex items-center gap-2">
               <Bot className="h-4 w-4 text-agent" />
@@ -214,7 +206,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-6 z-50 max-w-sm rounded-2xl border border-lightning/50 bg-surface-elevated p-4 shadow-lightning"
+            className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-lightning/50 bg-surface-elevated p-4 shadow-lightning sm:inset-x-auto sm:bottom-6 sm:left-6 sm:max-w-sm"
           >
             <div className="mb-1 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-lightning" />
@@ -234,9 +226,10 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
 /* ────────────────────────────────────────────────────────────── */
 
 function PlanningOverlay({
-  request, matched, agents, maestroAction,
+  request, requiredTags, matched, agents, maestroAction,
 }: {
   request: string;
+  requiredTags: string[];
   matched: string[];
   agents: Agent[];
   maestroAction: string;
@@ -246,12 +239,12 @@ function PlanningOverlay({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-background/85 backdrop-blur-md p-6"
+      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-background/85 p-4 backdrop-blur-md sm:items-center sm:p-6"
     >
-      <div className="w-full max-w-3xl space-y-5">
+      <div className="w-full max-w-3xl space-y-4 py-4 sm:space-y-5 sm:py-0">
         <div className="text-center">
           <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">PLANNING</div>
-          <h2 className="mt-1 text-xl font-bold">Maestro is matching capabilities…</h2>
+          <h2 className="mt-1 text-lg font-bold sm:text-xl">Maestro is matching capabilities…</h2>
         </div>
 
         {/* Request card */}
@@ -281,6 +274,21 @@ function PlanningOverlay({
             </motion.div>
           </div>
         </motion.div>
+
+        {/* Required tags */}
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground">REQUIRES:</span>
+          {requiredTags.map((t) => (
+            <motion.span
+              key={t}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-full border border-electric/50 bg-electric/10 px-2.5 py-0.5 font-mono text-[10px] text-electric"
+            >
+              {t}
+            </motion.span>
+          ))}
+        </div>
 
         {/* Marketplace mini-grid */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
@@ -505,16 +513,8 @@ function AgentCard({
 }
 
 function FinalOutput({
-  ready, paid, onPay, onNext, jobStatus, videoUrl, pricing,
-}: {
-  ready: boolean;
-  paid: boolean;
-  onPay: () => void;
-  onNext: () => void;
-  jobStatus: string;
-  videoUrl: string | null;
-  pricing: { subtotal: number; margin: number; total: number } | null;
-}) {
+  ready, paid, onPay, onNext, jobStatus,
+}: { ready: boolean; paid: boolean; onPay: () => void; onNext: () => void; jobStatus: string }) {
   return (
     <motion.div
       layout
@@ -543,7 +543,7 @@ function FinalOutput({
           >
             <div className="aspect-video overflow-hidden rounded-xl border border-electric/30 bg-black">
               <video
-                src={videoUrl ?? "https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"}
+                src="https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"
                 controls
                 autoPlay
                 muted
@@ -558,9 +558,9 @@ function FinalOutput({
                 <div className="mt-1 font-mono text-[10px] text-muted-foreground">15s · 9:16 · MP4 · 4.2 MB</div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <Tile k="SPENT" v={String(pricing?.subtotal ?? 0)} />
-                  <Tile k="MARGIN" v={String(pricing?.margin ?? 0)} />
-                  <Tile k="TOTAL" v={String(pricing?.total ?? 0)} />
+                  <Tile k="SPENT" v="68" />
+                  <Tile k="MARGIN" v="22" />
+                  <Tile k="TOTAL" v="90" />
                 </div>
               </div>
               {!paid ? (
@@ -568,7 +568,7 @@ function FinalOutput({
                   onClick={onPay}
                   className="mt-4 flex items-center justify-center gap-2 rounded-xl gradient-lightning px-5 py-3 font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01]"
                 >
-                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro {pricing?.total ?? 0} sats
+                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro 90 sats
                 </button>
               ) : (
                 <button
@@ -645,26 +645,10 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
     try {
       const base = (import.meta as any).env?.VITE_BACKEND_URL ?? (import.meta as any).env?.NEXT_PUBLIC_BACKEND_URL;
       if (base) {
-        const payload =
-          parsed.agent_id
-            ? parsed
-            : {
-                agent_id: String(parsed.id),
-                agent_type: parsed.agent_type === "ORCHESTRATOR" ? "orchestrator" : "specialist",
-                capability: String(parsed.capability),
-                capability_tags: parsed.capability_tags.map((t: any) => String(t)),
-                description: String(parsed.capability),
-                required_inputs: {},
-                optional_inputs: {},
-                context_gathering: { supported: false, sources: [] },
-                outputs: {},
-                pricing: { base_sats: Number(parsed.fee) },
-                typical_completion_seconds: 10,
-              };
         await fetch(`${base}/api/marketplace`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(parsed),
         }).catch(() => {});
       }
     } catch { /* noop */ }

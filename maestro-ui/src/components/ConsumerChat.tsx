@@ -34,15 +34,10 @@ export function ConsumerChat() {
     setThinking(true);
 
     setTimeout(() => {
-      // The previous step defines which spec field the user's last reply fills.
-      const prev = CHAT_SCRIPT[step - 1];
-      if (prev?.spec) {
-        addSpec({ ...prev.spec, value: userText });
-      }
-
       const next = CHAT_SCRIPT[step];
       if (next) {
         setMessages((m) => [...m, { id: crypto.randomUUID(), role: "maestro", content: next.maestro }]);
+        if (next.spec) addSpec(next.spec);
       }
       setThinking(false);
       setStep((s) => s + 1);
@@ -54,21 +49,21 @@ export function ConsumerChat() {
   const suggested = step > 0 && step <= CHAT_SCRIPT.length ? CHAT_SCRIPT[step - 1].userReply : "I need a product video for my coffee mug.";
 
   return (
-    <div className="grid-bg min-h-[calc(100vh-65px)]">
-      <div className="mx-auto grid max-w-[1400px] gap-6 px-6 py-8 lg:grid-cols-[1fr_380px]">
+    <div className="grid-bg min-h-[calc(100svh-65px)]">
+      <div className="mx-auto grid max-w-[1400px] gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_380px]">
         {/* CHAT */}
-        <div className="flex h-[calc(100vh-130px)] flex-col rounded-2xl border border-border bg-surface/60 shadow-elevated backdrop-blur">
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div className="flex h-[calc(100svh-130px)] min-h-[480px] flex-col rounded-2xl border border-border bg-surface/60 shadow-elevated backdrop-blur lg:h-[calc(100svh-130px)]">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-md gradient-lightning">
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
               <div>
-                <div className="text-sm font-semibold">Maestro</div>
-                <div className="font-mono text-[10px] text-muted-foreground">orchestrator · online</div>
+                <div className="text-sm font-semibold leading-none">Maestro</div>
+                <div className="mt-1 font-mono text-[10px] text-muted-foreground leading-none">orchestrator · online</div>
               </div>
             </div>
-            <span className="font-mono text-[10px] text-muted-foreground">v0.1 · demo</span>
+            <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground">end-to-end · sub-second settlement</span>
           </div>
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-5">
@@ -114,7 +109,7 @@ export function ConsumerChat() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => {
-                  startJob("Coffee Mug Product Video", "human").catch(() => {});
+                  startJob("Coffee Mug Product Video", "human");
                   setView("ops");
                 }}
                 className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl gradient-lightning px-6 py-3.5 text-base font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01] active:scale-[0.99]"

@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import type { Agent, PaymentEvent, SpecField } from "./types";
-import { fetchMaestro, fetchMarketplace, streamExecute, submitJob } from "./backend";
+import { INITIAL_AGENTS, MAESTRO, JOB_SEQUENCE, PRODUCT_VIDEO_REQUIRED_TAGS } from "./maestro-mock";
 
-type View = "chat" | "ops";
+type View = "landing" | "chat" | "ops";
 type ConsumerKind = "human" | "agent";
 type JobStatus = "idle" | "planning" | "in_progress" | "complete";
 
@@ -28,11 +28,9 @@ interface MaestroState {
   jobRequest: string;
   jobStatus: JobStatus;
   maestroAction: string;
+  requiredTags: string[];
   matchedAgentIds: string[];
-  finalVideoUrl: string | null;
-  pricing: { subtotal: number; margin: number; total: number } | null;
-  startJob: (title: string, kind: ConsumerKind, request?: string) => Promise<void>;
-  syncMarketplace: () => Promise<void>;
+  startJob: (title: string, kind: ConsumerKind, request?: string, requiredTags?: string[]) => void;
 
   agents: Agent[];
   maestro: Agent;
@@ -64,28 +62,15 @@ interface MaestroState {
 const randHash = () =>
   Array.from({ length: 12 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
 
-function inputsFromSpec(spec: SpecField[]): Record<string, unknown> {
-  const m = new Map(spec.map((s) => [s.key, s.value]));
-  const durationRaw = m.get("duration_seconds") ?? m.get("duration") ?? "";
-  const durationNum =
-    typeof durationRaw === "string"
-      ? parseFloat(durationRaw.replace(/[^\d.]/g, ""))
-      : Number(durationRaw);
-  const duration_seconds = Number.isFinite(durationNum) && durationNum > 0 ? durationNum : 15;
-
-  return {
-    product_name: m.get("product_name") ?? "Demo Product",
-    product_description: m.get("product_description") ?? "A short demo product description.",
-    target_audience: m.get("target_audience") ?? "general audience",
-    visual_context: m.get("visual_context") ?? "clean, modern, high-contrast",
-    style: m.get("style") ?? "playful",
-    duration_seconds,
-    voiceover_tone: m.get("voiceover_tone") ?? m.get("voiceover") ?? "warm",
-  };
-}
+// Planning timing (ms)
+const PLAN_REQUEST_IN = 100;
+const PLAN_MAESTRO_LIGHT = 700;
+const PLAN_LINES_FIRE = 1300;
+const PLAN_MATCH_SETTLE = 2400;
+const PLAN_HANDOFF = 3400;
 
 export const useMaestro = create<MaestroState>((set, get) => ({
-  view: "chat",
+  view: "landing",
   setView: (v) => set({ view: v }),
 
   spec: [],
@@ -100,145 +85,75 @@ export const useMaestro = create<MaestroState>((set, get) => ({
   jobRequest: "",
   jobStatus: "idle",
   maestroAction: "Standing by",
+  requiredTags: [],
   matchedAgentIds: [],
-  finalVideoUrl: null,
-  pricing: null,
 
-  syncMarketplace: async () => {
-    const [maestro, agents] = await Promise.all([fetchMaestro(), fetchMarketplace()]);
-    set({
-      maestro,
-      agents: agents.filter((a) => a.id !== maestro.id && a.agent_type === "SPECIALIST"),
-    });
-  },
-
-  startJob: async (title, kind, request) => {
-    const req = request ?? title;
-
+  startJob: (title, kind, request, requiredTags) => {
+    const tags = requiredTags ?? PRODUCT_VIDEO_REQUIRED_TAGS;
     set((s) => ({
       jobTitle: title,
-      jobRequest: req,
+      jobRequest: request ?? title,
       jobStatus: "planning",
       consumerKind: kind,
-      maestroAction: "Submitting job to Maestro…",
+      maestroAction: "Reading request…",
       videoReady: false,
-      finalVideoUrl: null,
-      pricing: null,
       consumerPaid: false,
+      requiredTags: tags,
       matchedAgentIds: [],
-      log: [
-        {
-          id: crypto.randomUUID(),
-          text: `Job #${String(s.jobNumber).padStart(3, "0")} received — ${title}`,
-          ts: Date.now(),
-          kind: "info",
-        },
-      ],
+      log: [{ id: crypto.randomUUID(), text: `Job #${String(s.jobNumber).padStart(3, "0")} received — ${title}`, ts: Date.now(), kind: "info" }],
       payments: [],
       agents: s.agents.map((a) => ({ ...a, status: "idle" as const })),
     }));
 
-    try {
-      await get().syncMarketplace();
-    } catch (err) {
-      set({ maestroAction: `Backend offline: ${(err as Error).message}`, jobStatus: "idle" });
-      return;
-    }
+    // PLANNING PHASE
+    setTimeout(() => set({ maestroAction: "Scanning marketplace for capabilities…" }), PLAN_MAESTRO_LIGHT);
 
-    const inputs = inputsFromSpec(get().spec);
-    const jobResp = await submitJob(req, inputs);
+    setTimeout(() => {
+      const matches = get().agents
+        .filter((a) => a.capability_tags.some((t) => tags.includes(t)))
+        .map((a) => a.id);
+      set({ matchedAgentIds: matches, maestroAction: `Matched ${matches.length} specialists` });
+      get().pushLog(`Capability match: [${tags.join(", ")}] → ${matches.length} agents`, "info");
+    }, PLAN_LINES_FIRE);
 
-    if (jobResp.status === "missing_inputs") {
-      set({ jobStatus: "idle", maestroAction: "Missing inputs" });
-      get().pushLog(`Missing inputs: ${jobResp.missing_inputs.join(", ")}`, "info");
-      return;
-    }
-    if (jobResp.status === "no_capability_match") {
-      set({ jobStatus: "idle", maestroAction: "No capability match" });
-      get().pushLog(jobResp.reason, "info");
-      return;
-    }
+    setTimeout(() => {
+      const n = get().matchedAgentIds.length;
+      set({ maestroAction: `Plan: hire ${n} specialists. Executing…` });
+    }, PLAN_MATCH_SETTLE);
 
-    set({ maestroAction: "Plan ready. Executing…", jobStatus: "in_progress" });
-    set({ pricing: jobResp.pricing });
+    // EXECUTION PHASE
+    setTimeout(() => {
+      set({ jobStatus: "in_progress" });
+      get().pushPayment({
+        from: kind === "human" ? "consumer" : "agent-consumer",
+        fromName: kind === "human" ? "You" : "MarketingBot",
+        to: "maestro",
+        toName: "Maestro",
+        amount: 90,
+        memo: "escrow: product video",
+      });
 
-    get().pushPayment({
-      from: kind === "human" ? "consumer" : "agent-consumer",
-      fromName: kind === "human" ? "You" : "MarketingBot",
-      to: get().maestro.id,
-      toName: get().maestro.name,
-      amount: jobResp.pricing.total,
-      memo: "escrow: maestro job",
-    });
-
-    await streamExecute(jobResp.jobId, (evt) => {
-      if (evt.step === "planning") {
-        set({ maestroAction: "Planning…", jobStatus: "planning" });
-        return;
-      }
-      if (evt.step === "hiring" && evt.agent) {
-        set({ maestroAction: `Hiring ${evt.agent}…` });
-        get().setAgentStatus(evt.agent, "hired");
-        set((s) => ({
-          matchedAgentIds: Array.from(new Set([...s.matchedAgentIds, evt.agent!])),
-        }));
-        return;
-      }
-      if (evt.step === "working" && evt.agent) {
-        if (typeof evt.paymentSent === "number") {
-          get().pushPayment({
-            from: get().maestro.id,
-            fromName: get().maestro.name,
-            to: evt.agent,
-            toName: evt.agent,
-            amount: evt.paymentSent,
-            memo: evt.capability ?? "agent fee",
-          });
-          get().setAgentStatus(evt.agent, "working");
-        }
-        if (evt.output !== undefined) {
-          get().setAgentStatus(evt.agent, "done");
-          get().pushLog(`${evt.agent}: delivered output`, "status");
-        }
-        return;
-      }
-      if (evt.step === "complete") {
-        const out = evt.finalOutput as any;
-        const url =
-          out?.["json2video-agent"]?.video_url ??
-          out?.["json2video-agent-v1"]?.video_url ??
-          out?.video_url ??
-          null;
-        set({
-          jobStatus: "complete",
-          videoReady: true,
-          finalVideoUrl: typeof url === "string" ? url : null,
-          maestroAction: "Job complete ✨",
-        });
-        get().pushLog("Final deliverable ready", "info");
-        return;
-      }
-      if (evt.step === "error") {
-        set({ jobStatus: "idle", maestroAction: evt.message ?? "Error" });
-      }
-    });
+      JOB_SEQUENCE.forEach((evt) => {
+        setTimeout(() => {
+          if (evt.maestroAction) set({ maestroAction: evt.maestroAction });
+          if (evt.kind === "status" && evt.status) {
+            get().setAgentStatus(evt.status.agent, evt.status.status);
+            if (evt.status.action) get().pushLog(`${evt.status.agent}: ${evt.status.action}`, "status");
+          }
+          if (evt.kind === "payment" && evt.payment) {
+            get().pushPayment(evt.payment);
+          }
+          if (evt.kind === "complete") {
+            set({ jobStatus: "complete", videoReady: true, maestroAction: "Job complete ✨" });
+            get().pushLog("Final deliverable ready", "info");
+          }
+        }, evt.delay);
+      });
+    }, PLAN_HANDOFF);
   },
 
-  agents: [],
-  maestro: {
-    id: "maestro",
-    name: "Maestro",
-    agent_type: "ORCHESTRATOR",
-    capability: "orchestrator",
-    capability_tags: ["orchestrator"],
-    specialty: "Orchestrator AI",
-    fee: 0,
-    balance: 0,
-    status: "idle",
-    avatar: "🪄",
-    color: "lightning",
-    pubkey: "03…",
-  },
+  agents: INITIAL_AGENTS,
+  maestro: MAESTRO,
   upsertAgent: (a) =>
     set((s) => {
       const exists = s.agents.find((x) => x.id === a.id);
@@ -310,22 +225,12 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       jobNumber: s.jobNumber + 1,
       jobStatus: "idle",
       videoReady: false,
-      finalVideoUrl: null,
-      pricing: null,
       consumerPaid: false,
       maestroAction: "Standing by",
       payments: [],
       log: [],
       incomingAgentRequest: false,
       matchedAgentIds: [],
+      requiredTags: [],
     })),
 }));
-
-// Best-effort initial sync on load.
-void (async () => {
-  try {
-    await useMaestro.getState().syncMarketplace();
-  } catch {
-    // ignore
-  }
-})();

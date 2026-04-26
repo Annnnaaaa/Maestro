@@ -3,6 +3,7 @@ import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
 import { ConsumerChat } from "@/components/ConsumerChat";
 import { OperationsDashboard, AddAgentModal } from "@/components/OperationsDashboard";
+import { Landing } from "@/components/Landing";
 import { useMaestro } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
@@ -24,7 +25,13 @@ function Index() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TopBar onAddAgent={() => setAddOpen(true)} />
-      {view === "chat" ? <ConsumerChat /> : <OperationsDashboard onAddAgent={() => setAddOpen(true)} />}
+      {view === "landing" ? (
+        <Landing />
+      ) : view === "chat" ? (
+        <ConsumerChat />
+      ) : (
+        <OperationsDashboard onAddAgent={() => setAddOpen(true)} />
+      )}
       <AddAgentModal open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   );
