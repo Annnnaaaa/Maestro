@@ -286,7 +286,7 @@ export function maestroManifest(): AgentManifest {
     },
     typical_completion_seconds: 30,
     hires_agents_with_capabilities: [
-      "product_video_generation_json2video",
+      "product_video_generation",
     ],
     marketplace_url: `${dashboardUrl.replace(/\/$/, "")}/api/marketplace`,
   };

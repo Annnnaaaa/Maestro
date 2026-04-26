@@ -7,17 +7,11 @@ export async function OPTIONS() {
 
 export async function GET() {
   const manifest: AgentManifest = {
-    agent_id: "json2video-agent-v1",
+    agent_id: "magichour-video-agent-v1",
     agent_type: "specialist",
-    capability: "product_video_generation_json2video",
-    capability_tags: [
-      "product_video_generation",
-      "video",
-      "json2video",
-      "render",
-      "product",
-    ],
-    description: "Generates a complete product video using the JSON2Video API (single-call pipeline).",
+    capability: "product_video_generation",
+    capability_tags: ["video", "magichour", "text-to-video", "render", "product"],
+    description: "Generates a complete product video using the Magic Hour Text-to-Video API.",
     required_inputs: {
       product_name: { type: "string", description: "Product name" },
       product_description: { type: "string", description: "Short description of what the product does" },
@@ -31,11 +25,12 @@ export async function GET() {
     },
     context_gathering: { supported: false, sources: [] },
     outputs: {
-      video_url: { type: "string", description: "URL to the rendered MP4" },
-      project: { type: "string", description: "JSON2Video project id (debug)" },
+      video_url: { type: "string", description: "URL to the rendered MP4 (time-limited)" },
+      project_id: { type: "string", description: "Magic Hour video project id (debug)" },
+      status: { type: "string", description: "Final status (debug)" },
     },
-    pricing: { base_sats: 13 },
-    typical_completion_seconds: 45,
+    pricing: { base_sats: 1 },
+    typical_completion_seconds: 35,
   };
 
   return withCors(manifest);
