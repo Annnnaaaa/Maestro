@@ -1,26 +1,19 @@
 import { AgentManifest } from "./manifest-schema";
-import { getAgent, getAgents } from "./marketplace";
+import {
+  Job,
+  getAgent,
+  getAllAgents,
+  getJob,
+  logActivity,
+  newActivityId,
+  saveJob,
+  updateJob,
+} from "./storage";
 import { ExecutionPlan, PlannedStep, planTask } from "./planner";
-import { payAgent } from "./lightning";
-import { createInvoice } from "./lightning";
+import { createInvoice, payAgent } from "./lightning";
 
 export const MAESTRO_AGENT_ID = "maestro";
 export const MAESTRO_MARGIN_PCT = 0.15;
-
-export interface Job {
-  id: string;
-  request: string;
-  consumerInputs: Record<string, unknown>;
-  plan: Extract<ExecutionPlan, { feasible: true }>;
-  subtotalSats: number;
-  marginSats: number;
-  totalSats: number;
-  invoice?: { invoice: string; payment_hash: string };
-  createdAt: number;
-  status: "planned" | "running" | "complete" | "error";
-  results: Record<string, unknown>;
-  error?: string;
-}
 
 export interface ProgressEvent {
   step: "planning" | "hiring" | "working" | "complete" | "error";
@@ -31,20 +24,6 @@ export interface ProgressEvent {
   message?: string;
   finalOutput?: unknown;
   plan?: ExecutionPlan;
-}
-
-const g = globalThis as typeof globalThis & {
-  __maestro_jobs?: Map<string, Job>;
-};
-if (!g.__maestro_jobs) g.__maestro_jobs = new Map();
-const jobs = g.__maestro_jobs;
-
-export function getJob(id: string): Job | undefined {
-  return jobs.get(id);
-}
-
-export function saveJob(job: Job): void {
-  jobs.set(job.id, job);
 }
 
 export function newJobId(): string {
@@ -66,13 +45,13 @@ export type MissingInputs = {
   for_agent: string;
 };
 
-export function validateInputsForFirstStep(
+export async function validateInputsForFirstStep(
   plan: Extract<ExecutionPlan, { feasible: true }>,
   consumerInputs: Record<string, unknown>
-): MissingInputs | null {
+): Promise<MissingInputs | null> {
   const firstStep = plan.steps[0];
   if (!firstStep) return null;
-  const agent = getAgent(firstStep.agent_id);
+  const agent = await getAgent(firstStep.agent_id);
   if (!agent) return null;
   const missing = Object.keys(agent.required_inputs).filter(
     (key) => consumerInputs[key] === undefined
@@ -88,7 +67,8 @@ export async function planAndPriceJob(
   plan: ExecutionPlan;
   pricing?: { subtotal: number; margin: number; total: number };
 }> {
-  const plan = await planTask(request, getAgents(), consumerInputs);
+  const agents = await getAllAgents();
+  const plan = await planTask(request, agents, consumerInputs);
   if (!plan.feasible) return { plan };
   return { plan, pricing: priceJob(plan) };
 }
@@ -126,64 +106,74 @@ function mergeOutputsIntoInputs(
   step: PlannedStep,
   priorOutputs: Record<string, unknown>
 ): Record<string, unknown> {
-  // Replace any "<from:agent_id>" placeholders the planner left behind with
-  // actual prior outputs, when available. Anything else in inputs_for_agent
-  // is passed through as-is.
   const merged: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(step.inputs_for_agent)) {
     if (typeof value === "string" && value.startsWith("<from:")) {
-      if (priorOutputs[key] !== undefined) {
-        merged[key] = priorOutputs[key];
-      }
+      if (priorOutputs[key] !== undefined) merged[key] = priorOutputs[key];
     } else {
       merged[key] = value;
     }
   }
-  // Always pass anything from priorOutputs that the agent might want.
   for (const [key, value] of Object.entries(priorOutputs)) {
     if (merged[key] === undefined) merged[key] = value;
   }
   return merged;
 }
 
+export { getJob };
+
 export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> {
-  const job = jobs.get(jobId);
+  let job = await getJob(jobId);
   if (!job) {
     yield { step: "error", message: `unknown job ${jobId}` };
     return;
   }
+  if (!job.plan || !job.plan.feasible) {
+    yield { step: "error", message: `job ${jobId} has no feasible plan` };
+    return;
+  }
 
-  // Emit the plan first so the dashboard can show "Maestro is choosing
-  // which agents to hire" before any payment fires.
   yield { step: "planning", plan: job.plan };
 
-  job.status = "running";
-  saveJob(job);
+  job = await updateJob(jobId, { status: "executing" });
+  await logActivity({
+    id: newActivityId(),
+    type: "job_started",
+    job_id: jobId,
+    message: `job ${jobId} started`,
+    timestamp: Date.now(),
+  });
 
   const accumulatedOutputs: Record<string, unknown> = {};
+  const stepsCompleted = [...job.steps_completed];
+  let totalPaid = job.total_paid_sats;
 
   for (const step of job.plan.steps) {
-    const agent = getAgent(step.agent_id);
+    const agent = await getAgent(step.agent_id);
     if (!agent) {
-      yield {
-        step: "error",
-        agent: step.agent_id,
-        message: "agent not found in marketplace at execution time",
-      };
-      job.status = "error";
-      job.error = `agent ${step.agent_id} not found`;
-      saveJob(job);
+      const msg = `agent ${step.agent_id} not found in marketplace at execution time`;
+      yield { step: "error", agent: step.agent_id, message: msg };
+      await updateJob(jobId, { status: "failed" });
       return;
     }
 
     yield { step: "hiring", agent: agent.agent_id, capability: agent.capability };
+    await logActivity({
+      id: newActivityId(),
+      type: "hire",
+      to_agent_id: agent.agent_id,
+      job_id: jobId,
+      message: `hiring ${agent.agent_id} for ${agent.capability}`,
+      timestamp: Date.now(),
+    });
 
     const payment = await payAgent(
       MAESTRO_AGENT_ID,
       agent.agent_id,
       step.fee_sats,
-      `${agent.capability} (job ${job.id})`
+      `${agent.capability} (job ${jobId})`
     );
+    if (payment.success) totalPaid += step.fee_sats;
 
     yield {
       step: "working",
@@ -197,16 +187,24 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
     const output = await callAgentEndpoint(agent, inputs);
 
     if (output && typeof output === "object") {
-      // Hoist the agent's declared output fields into the shared bag so
-      // downstream steps can consume them by key.
       for (const outKey of Object.keys(agent.outputs)) {
         const v = (output as Record<string, unknown>)[outKey];
         if (v !== undefined) accumulatedOutputs[outKey] = v;
       }
     }
 
-    job.results[agent.agent_id] = output;
-    saveJob(job);
+    stepsCompleted.push({
+      step_id: step.step_id,
+      agent_id: agent.agent_id,
+      output,
+      payment_hash: payment.payment_hash,
+      completed_at: Date.now(),
+    });
+
+    await updateJob(jobId, {
+      steps_completed: stepsCompleted,
+      total_paid_sats: totalPaid,
+    });
 
     yield {
       step: "working",
@@ -216,13 +214,48 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
     };
   }
 
-  job.status = "complete";
-  saveJob(job);
+  const final_output = {
+    ...accumulatedOutputs,
+    by_agent: stepsCompleted.reduce<Record<string, unknown>>((acc, s) => {
+      acc[s.agent_id] = s.output;
+      return acc;
+    }, {}),
+  };
 
-  yield { step: "complete", finalOutput: job.results };
+  await updateJob(jobId, { status: "complete", final_output });
+  await logActivity({
+    id: newActivityId(),
+    type: "job_completed",
+    job_id: jobId,
+    message: `job ${jobId} completed`,
+    timestamp: Date.now(),
+  });
+
+  yield { step: "complete", finalOutput: final_output };
 }
 
-// Maestro's own manifest. Surfaced at GET /api/agent/manifest.
+// Helper used by /api/maestro/job to construct the initial job record.
+export function buildIntakeJob(args: {
+  request: string;
+  inputs: Record<string, unknown>;
+  callerType: "agent" | "human";
+  callerId?: string;
+}): Job {
+  const now = Date.now();
+  return {
+    job_id: newJobId(),
+    caller_type: args.callerType,
+    caller_id: args.callerId,
+    request: args.request,
+    inputs: args.inputs,
+    status: "intake",
+    steps_completed: [],
+    total_paid_sats: 0,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
 export function maestroManifest(): AgentManifest {
   const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? "http://localhost:3000";
   return {
@@ -242,10 +275,7 @@ export function maestroManifest(): AgentManifest {
         type: "string",
         description: "Aesthetic / brand cues to guide visuals",
       },
-      target_audience: {
-        type: "string",
-        description: "Who this is for",
-      },
+      target_audience: { type: "string", description: "Who this is for" },
     },
     optional_inputs: {
       style: { type: "string", description: "cinematic | playful | minimal" },
@@ -254,10 +284,7 @@ export function maestroManifest(): AgentManifest {
     },
     context_gathering: { supported: false, sources: [] },
     outputs: {
-      results: {
-        type: "object",
-        description: "Map of agent_id -> that agent's output",
-      },
+      results: { type: "object", description: "Map of agent_id -> that agent's output" },
     },
     pricing: {
       base_sats: 0,
@@ -273,5 +300,4 @@ export function maestroManifest(): AgentManifest {
   };
 }
 
-// Re-exported for the API layer; declared here to keep route imports tidy.
-export { createInvoice };
+export { createInvoice, saveJob };

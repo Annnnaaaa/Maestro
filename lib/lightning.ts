@@ -1,7 +1,12 @@
 import "websocket-polyfill";
 import * as nwc from "@getalby/sdk/nwc";
-
-type Ledger = Record<string, number>;
+import {
+  adjustBalance,
+  getAllBalances,
+  getBalance,
+  logActivity,
+  newActivityId,
+} from "./storage";
 
 export interface AgentPaymentResult {
   success: boolean;
@@ -24,27 +29,11 @@ export interface LegacyPaymentResult extends AgentPaymentResult {
   amount_sats: number;
 }
 
-const INITIAL_LEDGER: Readonly<Ledger> = {
-  maestro: 1000,
-  "script-agent": 0,
-  "voice-agent": 0,
-  "visual-agent": 0,
-  consumer: 500,
-};
-
 const g = globalThis as typeof globalThis & {
-  __maestro_lightning_ledger?: Ledger;
   __maestro_lightning_prefer_stub?: boolean;
 };
 
 let client: nwc.NWCClient | null = null;
-
-function getLedger(): Ledger {
-  if (!g.__maestro_lightning_ledger) {
-    g.__maestro_lightning_ledger = { ...INITIAL_LEDGER };
-  }
-  return g.__maestro_lightning_ledger;
-}
 
 function isStubMode(): boolean {
   return process.env.USE_STUB_LIGHTNING === "true" || g.__maestro_lightning_prefer_stub === true;
@@ -85,21 +74,20 @@ function getClient(): nwc.NWCClient {
   if (!process.env.NWC_CONNECTION_STRING) {
     throw new Error("NWC_CONNECTION_STRING is not set");
   }
-
   if (!client) {
     client = new nwc.NWCClient({
       nostrWalletConnectUrl: process.env.NWC_CONNECTION_STRING,
     });
   }
-
   return client;
 }
 
-async function withLightningFallback<T>(action: string, run: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
-  if (isStubMode()) {
-    return fallback();
-  }
-
+async function withLightningFallback<T>(
+  action: string,
+  run: () => Promise<T>,
+  fallback: () => Promise<T>
+): Promise<T> {
+  if (isStubMode()) return fallback();
   try {
     return await run();
   } catch (error) {
@@ -111,7 +99,8 @@ async function withLightningFallback<T>(action: string, run: () => Promise<T>, f
 
 async function stubGetRealBalance(): Promise<number> {
   await sleep(randomDelayMs());
-  return Object.values(getLedger()).reduce((sum, value) => sum + value, 0);
+  const ledger = await getAllBalances();
+  return Object.values(ledger).reduce((sum, value) => sum + value, 0);
 }
 
 async function stubCreateInvoice(amountSats: number, memo: string): Promise<ConsumerInvoiceResult> {
@@ -148,19 +137,25 @@ async function stubRoundTripPayment(
   };
 }
 
-function adjustLedger(fromAgentId: string, toAgentId: string, amountSats: number): void {
-  const ledger = getLedger();
-  ledger[fromAgentId] = (ledger[fromAgentId] ?? 0) - amountSats;
-  ledger[toAgentId] = (ledger[toAgentId] ?? 0) + amountSats;
-}
-
-export function initLedger(): Ledger {
-  g.__maestro_lightning_ledger = { ...INITIAL_LEDGER };
-  return getLedgerSnapshot();
-}
-
-export function getVirtualBalance(agentId: string): number {
-  return getLedger()[agentId] ?? 0;
+async function recordPayment(
+  fromAgentId: string,
+  toAgentId: string,
+  amountSats: number,
+  payment_hash: string,
+  memo: string
+): Promise<void> {
+  await adjustBalance(fromAgentId, -amountSats);
+  await adjustBalance(toAgentId, +amountSats);
+  await logActivity({
+    id: newActivityId(),
+    type: "payment",
+    from_agent_id: fromAgentId,
+    to_agent_id: toAgentId,
+    amount_sats: amountSats,
+    payment_hash,
+    message: `${fromAgentId} -> ${toAgentId}: ${amountSats} sats (${memo})`,
+    timestamp: Date.now(),
+  });
 }
 
 export async function getRealBalance(): Promise<number> {
@@ -189,7 +184,7 @@ export async function payAgent(
     };
   }
 
-  const fromBalance = getVirtualBalance(fromAgentId);
+  const fromBalance = await getBalance(fromAgentId);
   if (fromBalance < amountSats) {
     return {
       success: false,
@@ -200,12 +195,12 @@ export async function payAgent(
   }
 
   if (isStubMode()) {
-    adjustLedger(fromAgentId, toAgentId, amountSats);
-    return stubRoundTripPayment(fromAgentId, toAgentId, amountSats);
+    const result = await stubRoundTripPayment(fromAgentId, toAgentId, amountSats);
+    await recordPayment(fromAgentId, toAgentId, amountSats, result.payment_hash, memo);
+    return result;
   }
 
   const startedAt = Date.now();
-
   try {
     const lightningClient = getClient();
     const invoice = await lightningClient.makeInvoice({
@@ -214,29 +209,25 @@ export async function payAgent(
     });
     await lightningClient.payInvoice({ invoice: invoice.invoice });
 
-    adjustLedger(fromAgentId, toAgentId, amountSats);
-
     const settled_at = Date.now();
     const payment_hash = invoice.payment_hash;
     console.log(
       `⚡ ${amountSats} sats: ${fromAgentId} -> ${toAgentId} [${payment_hash}] (${settled_at - startedAt}ms)`
     );
 
-    return {
-      success: true,
-      payment_hash,
-      settled_at,
-    };
+    await recordPayment(fromAgentId, toAgentId, amountSats, payment_hash, memo);
+    return { success: true, payment_hash, settled_at };
   } catch (error) {
     console.error("[lightning] payAgent failed, continuing with stub ledger settlement", error);
     setPreferStub(error);
-    adjustLedger(fromAgentId, toAgentId, amountSats);
-    return stubRoundTripPayment(
+    const result = await stubRoundTripPayment(
       fromAgentId,
       toAgentId,
       amountSats,
       error instanceof Error ? error.message : "lightning payment failed"
     );
+    await recordPayment(fromAgentId, toAgentId, amountSats, result.payment_hash, memo);
+    return result;
   }
 }
 
@@ -248,10 +239,7 @@ export async function createInvoice(amountSats: number, memo: string): Promise<C
         amount: amountSats * 1000,
         description: memo,
       });
-      return {
-        invoice: invoice.invoice,
-        payment_hash: invoice.payment_hash,
-      };
+      return { invoice: invoice.invoice, payment_hash: invoice.payment_hash };
     },
     async () => stubCreateInvoice(amountSats, memo)
   );
@@ -268,17 +256,7 @@ export async function verifyPayment(payment_hash: string): Promise<VerifyPayment
   );
 }
 
-export function getLedgerSnapshot(): Ledger {
-  return { ...getLedger() };
-}
-
 export async function payInvoice(agentId: string, amountSats: number): Promise<LegacyPaymentResult> {
   const result = await payAgent("maestro", agentId, amountSats, `agent fee: ${agentId}`);
-  return {
-    ...result,
-    agent_id: agentId,
-    amount_sats: amountSats,
-  };
+  return { ...result, agent_id: agentId, amount_sats: amountSats };
 }
-
-initLedger();
