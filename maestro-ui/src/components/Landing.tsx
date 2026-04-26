@@ -73,7 +73,7 @@ export function Landing() {
   const glowBg = useMotionTemplate`radial-gradient(600px circle at ${glowX} ${glowY}, color-mix(in oklab, var(--lightning) 35%, transparent), transparent 60%)`;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative h-full overflow-y-auto overscroll-contain">
       {/* Scroll progress */}
       <motion.div
         style={{ width: progressBar }}
