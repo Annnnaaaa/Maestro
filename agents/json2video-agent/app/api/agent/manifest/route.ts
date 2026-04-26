@@ -7,7 +7,8 @@ export async function OPTIONS() {
 
 export async function GET() {
   const manifest: AgentManifest = {
-    agent_id: "json2video-agent-v1",
+    // IMPORTANT: must match marketplace placeholder id so Maestro can pay/hire it consistently.
+    agent_id: "json2video-agent",
     agent_type: "specialist",
     capability: "product_video_generation_json2video",
     capability_tags: [

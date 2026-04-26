@@ -53,11 +53,15 @@ async function createTextToVideoJob(apiKey: string, inputs: Inputs): Promise<{ i
       : 6;
   const end_seconds = clamp(endSecondsRaw, 1.5, 15);
 
+  // Some Magic Hour plans restrict higher resolutions.
+  // 480p is widely available; allow overriding via env.
+  const resolution = (process.env.MAGIC_HOUR_RESOLUTION ?? "480p").trim();
+
   const body = {
     name: `Maestro: ${inputs.product_name ?? "Product"} (${new Date().toISOString()})`.slice(0, 120),
     end_seconds,
     aspect_ratio: "16:9",
-    resolution: "720p",
+    resolution,
     // Keep model default server-side unless you want to pin it via env later.
     // model: "kling-3.0",
     audio: false,

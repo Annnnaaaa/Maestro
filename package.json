@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "dev:all": "concurrently -k -n maestro,ui,script,voice,visual,json2video -c blue,white,green,magenta,cyan,yellow \"npm run dev\" \"npm --prefix maestro-ui run dev\" \"npm --prefix agents/script-agent run dev\" \"npm --prefix agents/voice-agent run dev\" \"npm --prefix agents/visual-agent run dev\" \"npm --prefix agents/json2video-agent run dev\"",
+    "dev:all": "concurrently -k -n maestro,ui,script,voice,visual,json2video,magichour -c blue,white,green,magenta,cyan,yellow,red \"npm run dev\" \"npm --prefix maestro-ui run dev\" \"npm --prefix agents/script-agent run dev\" \"npm --prefix agents/voice-agent run dev\" \"npm --prefix agents/visual-agent run dev\" \"npm --prefix agents/json2video-agent run dev\" \"npm --prefix agents/magichour-video-agent run dev\"",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint"

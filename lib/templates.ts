@@ -21,10 +21,8 @@ export const TEMPLATES: Template[] = [
   {
     key: "product_video",
     description:
-      "End-to-end product video generated directly via a single-call video generator agent (preferred).",
+      "End-to-end product video generated directly via a single-call video generator agent.",
     capabilities: [
-      // Use a generic capability so Maestro can pick the best available provider
-      // (e.g. Magic Hour, JSON2Video, etc.) without changing templates.
       "product_video_generation",
     ],
     keywords: [
