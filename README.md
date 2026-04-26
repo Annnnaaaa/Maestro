@@ -1,4 +1,12 @@
+<p align="center">
+  <img src="docs/MaestroLogo.png" alt="Maestro logo" width="520" />
+</p>
+
 # Maestro
+
+<p align="center">
+  <img src="docs/MaestroLogoIcon.png" alt="Maestro icon" width="96" />
+</p>
 
 Maestro is an **LLM-powered orchestrator** that takes a high-level request,
 inspects its marketplace of specialist agents, plans which agents to run

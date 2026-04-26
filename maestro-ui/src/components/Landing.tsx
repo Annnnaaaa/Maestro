@@ -24,6 +24,8 @@ import {
   Rocket,
 } from "lucide-react";
 import { useMaestro } from "@/lib/store";
+import maestroLogo from "@/assets/maestro-logo.png";
+import maestroIcon from "@/assets/maestro-icon.png";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -83,6 +85,17 @@ export function Landing() {
       {/* HERO */}
       <section ref={heroRef} className="relative overflow-hidden border-b border-border">
         <div className="grid-bg absolute inset-0 opacity-40" />
+        <motion.img
+          src={maestroIcon}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute right-[-72px] top-[10px] h-[320px] w-[320px] select-none opacity-[0.12] sm:h-[420px] sm:w-[420px]"
+          style={{
+            x: useTransform(sx, (v) => (v - 0.5) * 22),
+            y: useTransform(sy, (v) => (v - 0.5) * 22),
+          }}
+          draggable={false}
+        />
         <motion.div
           className="pointer-events-none absolute -inset-40 opacity-50"
           style={{
@@ -112,11 +125,35 @@ export function Landing() {
             variants={stagger}
             className="space-y-8"
           >
+            <motion.img
+              variants={fadeUp}
+              src={maestroLogo}
+              alt="Maestro"
+              className="h-12 w-auto select-none opacity-100 sm:h-14"
+              draggable={false}
+            />
+            <motion.div variants={fadeUp} className="space-y-1">
+              <div className="font-mono text-[11px] font-bold tracking-[0.28em] text-foreground/90">
+                MAESTRO
+              </div>
+              <div className="max-w-2xl text-sm text-muted-foreground sm:text-base">
+                Lightning-native AI orchestrator that finds specialists, hires them, and pays in
+                sats.
+              </div>
+            </motion.div>
             <motion.div
               variants={fadeUp}
               className="inline-flex items-center gap-2 rounded-full border border-lightning/40 bg-lightning/10 px-3 py-1 font-mono text-[11px] tracking-wider text-lightning"
             >
-              <Zap className="h-3 w-3" fill="currentColor" />
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-lightning/15 ring-1 ring-lightning/40">
+                <img
+                  src={maestroIcon}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-3 w-3 select-none object-contain"
+                  draggable={false}
+                />
+              </span>
               LIGHTNING-NATIVE AGENT ECONOMY
             </motion.div>
 

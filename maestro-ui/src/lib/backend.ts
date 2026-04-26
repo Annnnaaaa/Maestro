@@ -34,8 +34,8 @@ export type ProgressEvent =
   | { step: "error"; message?: string; agent?: string };
 
 export function backendBase(): string {
-  const env = (import.meta as any).env ?? {};
-  return (env.VITE_BACKEND_URL as string | undefined) ?? "http://localhost:3000";
+  const env = import.meta.env as Record<string, string | undefined>;
+  return env.VITE_BACKEND_URL ?? "http://localhost:3000";
 }
 
 function avatarFor(agentId: string, capability: string): string {
@@ -105,10 +105,9 @@ export async function streamExecute(
   jobId: string,
   onEvent: (e: ProgressEvent) => void,
 ): Promise<void> {
-  const res = await fetch(
-    `${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/execute`,
-    { method: "POST" },
-  );
+  const res = await fetch(`${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/execute`, {
+    method: "POST",
+  });
   if (!res.ok || !res.body) throw new Error(`execute: ${res.status}`);
 
   const reader = res.body.getReader();

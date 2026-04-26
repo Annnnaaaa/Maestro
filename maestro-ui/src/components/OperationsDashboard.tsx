@@ -232,9 +232,9 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
                         {
                           product_name: "SaaS Launch",
                           product_description: "A new SaaS product launching soon.",
-                        }
+                        },
                       ),
-                    300
+                    300,
                   );
                 }}
                 className="flex-1 rounded-lg bg-agent/20 py-2 text-xs font-semibold text-agent hover:bg-agent/30 border border-agent/40"
@@ -685,7 +685,10 @@ function FinalOutput({
           >
             <div className="aspect-video overflow-hidden rounded-xl border border-electric/30 bg-black">
               <video
-                src={videoUrl ?? "https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"}
+                src={
+                  videoUrl ??
+                  "https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"
+                }
                 controls
                 autoPlay
                 muted

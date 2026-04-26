@@ -2,6 +2,7 @@ import { useMaestro } from "@/lib/store";
 import { AnimatedCounter } from "./AnimatedCounter";
 import { Plus, Zap, Menu, X } from "lucide-react";
 import { useState } from "react";
+import maestroIcon from "@/assets/maestro-icon.png";
 
 export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
   const { view, setView, gmv, jobsCompleted, agents } = useMaestro();
@@ -22,7 +23,12 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
           className="flex shrink-0 items-center gap-2.5 transition-opacity hover:opacity-80"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-lightning shadow-lightning">
-            <Zap className="h-5 w-5 text-primary-foreground" fill="currentColor" />
+            <img
+              src={maestroIcon}
+              alt="Maestro"
+              className="h-7 w-7 select-none object-contain"
+              draggable={false}
+            />
           </div>
           <div className="hidden sm:block text-left">
             <div className="font-mono text-sm font-bold tracking-tight leading-none">MAESTRO</div>

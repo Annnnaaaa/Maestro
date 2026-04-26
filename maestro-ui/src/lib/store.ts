@@ -6,6 +6,9 @@ type View = "landing" | "chat" | "ops";
 type ConsumerKind = "human" | "agent";
 type JobStatus = "idle" | "planning" | "in_progress" | "complete";
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
 interface JobLogEntry {
   id: string;
   text: string;
@@ -38,7 +41,12 @@ interface MaestroState {
   jobProductName: string | null;
 
   initFromBackend: () => void;
-  startJob: (title: string, kind: ConsumerKind, request: string, inputs: Record<string, unknown>) => Promise<void>;
+  startJob: (
+    title: string,
+    kind: ConsumerKind,
+    request: string,
+    inputs: Record<string, unknown>,
+  ) => Promise<void>;
 
   agents: Agent[];
   maestro: Agent;
@@ -160,9 +168,12 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       return;
     }
 
-    const plan = res.plan as any;
-    const steps = Array.isArray(plan?.steps) ? plan.steps : [];
-    const agentIds = steps.map((s: any) => String(s.agent_id ?? "")).filter(Boolean);
+    const plan = res.plan;
+    const stepsRaw = isRecord(plan) ? plan.steps : undefined;
+    const steps = Array.isArray(stepsRaw) ? stepsRaw : [];
+    const agentIds = steps
+      .map((step) => (isRecord(step) ? String(step.agent_id ?? "") : ""))
+      .filter(Boolean);
     set({
       maestroAction: "Awaiting payment…",
       jobStatus: "in_progress",
@@ -287,19 +298,25 @@ export const useMaestro = create<MaestroState>((set, get) => ({
               });
             }
             if (e.output) {
-              const note =
-                typeof (e.output as any)?.note === "string" ? String((e.output as any).note) : "";
+              const note = (() => {
+                if (!isRecord(e.output)) return "";
+                return typeof e.output.note === "string" ? e.output.note : "";
+              })();
               get().pushLog(`${e.agent}: output received${note ? ` — ${note}` : ""}`, "status");
               get().setAgentStatus(e.agent, "done");
             }
             return;
           }
           if (e.step === "complete") {
-            const final = e.finalOutput as any;
-            const maybe =
-              final?.["magichour-video-agent"]?.video_url ??
-              final?.["json2video-agent"]?.video_url ??
-              null;
+            const final = e.finalOutput;
+            const maybe = (() => {
+              if (!isRecord(final)) return null;
+              const a = final["magichour-video-agent"];
+              const b = final["json2video-agent"];
+              const urlA = isRecord(a) ? a.video_url : undefined;
+              const urlB = isRecord(b) ? b.video_url : undefined;
+              return typeof urlA === "string" ? urlA : typeof urlB === "string" ? urlB : null;
+            })();
             set({
               jobStatus: "complete",
               videoReady: true,

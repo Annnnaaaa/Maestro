@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMaestro } from "@/lib/store";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, SpecField } from "@/lib/types";
 import { Send, Sparkles, Zap } from "lucide-react";
 
 type Question = {
@@ -47,7 +47,7 @@ export function ConsumerChat() {
         suggest: "A self-heating smart mug that keeps coffee at 60°C for hours.",
       },
     ],
-    []
+    [],
   );
 
   useEffect(() => {
@@ -83,7 +83,10 @@ export function ConsumerChat() {
 
       const next = questions[step + 1];
       if (next) {
-        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "maestro", content: next.prompt }]);
+        setMessages((m) => [
+          ...m,
+          { id: crypto.randomUUID(), role: "maestro", content: next.prompt },
+        ]);
         setThinking(false);
         setStep((s) => s + 1);
         return;
@@ -95,7 +98,8 @@ export function ConsumerChat() {
           : (spec.find((f) => f.key === "request")?.value as string | undefined)) ??
         "Create a product video.";
       const inputs: Record<string, unknown> = {};
-      for (const f of [...spec, { key: q.key, label: q.key, value: userText } as any]) {
+      const allFields: SpecField[] = [...spec, { key: q.key, label: q.key, value: userText }];
+      for (const f of allFields) {
         if (f.key === "request") continue;
         inputs[f.key] = f.value;
       }
@@ -114,7 +118,7 @@ export function ConsumerChat() {
           `Product Video: ${String(inputs.product_name ?? "product")}`,
           "human",
           requestText,
-          inputs
+          inputs,
         );
         setThinking(false);
         setStep((s) => s + 1);
