@@ -7,6 +7,13 @@ import { createInvoice } from "./lightning";
 export const MAESTRO_AGENT_ID = "maestro";
 export const MAESTRO_MARGIN_PCT = 0.15;
 
+export type JobStatus =
+  | "intake"
+  | "awaiting_payment"
+  | "executing"
+  | "complete"
+  | "failed";
+
 export interface Job {
   id: string;
   request: string;
@@ -17,13 +24,22 @@ export interface Job {
   totalSats: number;
   invoice?: { invoice: string; payment_hash: string };
   createdAt: number;
-  status: "planned" | "running" | "complete" | "error";
+  status: JobStatus;
   results: Record<string, unknown>;
   error?: string;
+  // Payment gate fields
+  payment_hash_received?: string;
+  payment_verified_at?: number;
 }
 
 export interface ProgressEvent {
-  step: "planning" | "hiring" | "working" | "complete" | "error";
+  step:
+    | "planning"
+    | "planning_decision"
+    | "hiring"
+    | "working"
+    | "complete"
+    | "error";
   agent?: string;
   capability?: string;
   paymentSent?: number;
@@ -31,6 +47,8 @@ export interface ProgressEvent {
   message?: string;
   finalOutput?: unknown;
   plan?: ExecutionPlan;
+  candidate_count?: number;
+  price_range_sats?: { min: number; max: number };
 }
 
 const g = globalThis as typeof globalThis & {
@@ -45,6 +63,14 @@ export function getJob(id: string): Job | undefined {
 
 export function saveJob(job: Job): void {
   jobs.set(job.id, job);
+}
+
+export function updateJob(id: string, patch: Partial<Job>): Job {
+  const existing = jobs.get(id);
+  if (!existing) throw new Error(`updateJob: job ${id} not found`);
+  const merged: Job = { ...existing, ...patch };
+  jobs.set(id, merged);
+  return merged;
 }
 
 export function newJobId(): string {
@@ -170,7 +196,7 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
   // which agents to hire" before any payment fires.
   yield { step: "planning", plan: job.plan };
 
-  job.status = "running";
+  job.status = "executing";
   saveJob(job);
 
   const accumulatedOutputs: Record<string, unknown> = {};
@@ -183,10 +209,27 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
         agent: step.agent_id,
         message: "agent not found in marketplace at execution time",
       };
-      job.status = "error";
+      job.status = "failed";
       job.error = `agent ${step.agent_id} not found`;
       saveJob(job);
       return;
+    }
+
+    // Surface why this agent was selected over alternatives. The rationale
+    // is computed by the planner; we just relay it here so the dashboard
+    // can show "Selected ... cheapest match" before the payment fires.
+    if (step.selection_rationale) {
+      yield {
+        step: "planning_decision",
+        agent: agent.agent_id,
+        capability: agent.capability,
+        message: step.selection_rationale.message,
+        candidate_count: step.selection_rationale.candidate_count,
+        price_range_sats: {
+          min: step.selection_rationale.min_sats,
+          max: step.selection_rationale.max_sats,
+        },
+      };
     }
 
     yield { step: "hiring", agent: agent.agent_id, capability: agent.capability };

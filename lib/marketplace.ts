@@ -124,6 +124,15 @@ export function getAgentsByCapability(capability: string): AgentManifest[] {
   );
 }
 
+export async function pickBestAgent(capability: string): Promise<AgentManifest | null> {
+  const candidates = await getAgentsByCapability(capability);
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+  // Sort by base price ascending, pick cheapest.
+  candidates.sort((a, b) => a.pricing.base_sats - b.pricing.base_sats);
+  return candidates[0];
+}
+
 export function addAgent(manifest: AgentManifest): AgentManifest {
   if (!isManifest(manifest)) {
     throw new Error("addAgent: invalid AgentManifest payload");

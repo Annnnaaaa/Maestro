@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     totalSats: pricing!.total,
     invoice,
     createdAt: Date.now(),
-    status: "planned",
+    status: "awaiting_payment",
     results: {},
   };
   saveJob(job);

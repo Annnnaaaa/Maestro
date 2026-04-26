@@ -1,6 +1,14 @@
 import { askLLM } from "./llm";
 import { AgentManifest } from "./manifest-schema";
+import { getAgentsByCapability, pickBestAgent } from "./marketplace";
 import { findTemplate } from "./templates";
+
+export type SelectionRationale = {
+  candidate_count: number;
+  min_sats: number;
+  max_sats: number;
+  message: string;
+};
 
 export type PlannedStep = {
   step_id: string;
@@ -8,6 +16,7 @@ export type PlannedStep = {
   capability: string;
   fee_sats: number;
   inputs_for_agent: Record<string, unknown>;
+  selection_rationale?: SelectionRationale;
 };
 
 export type ExecutionPlan =
@@ -52,15 +61,6 @@ type ClaudePlan =
   | { steps: ClaudeStep[] }
   | { feasible: true; steps: ClaudeStep[] };
 
-function findAgentForCapability(
-  capability: string,
-  marketplaceAgents: AgentManifest[]
-): AgentManifest | undefined {
-  const exact = marketplaceAgents.find((a) => a.capability === capability);
-  if (exact) return exact;
-  return marketplaceAgents.find((a) => a.capability_tags.includes(capability));
-}
-
 function buildInputsForAgent(
   agent: AgentManifest,
   request: string,
@@ -80,14 +80,33 @@ function buildInputsForAgent(
   return inputs;
 }
 
-function assemblePlan(
+function rationaleFor(
+  cap: string,
+  candidates: AgentManifest[],
+  chosen: AgentManifest
+): SelectionRationale {
+  const prices = candidates.map((c) => c.pricing.base_sats);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const why =
+    candidates.length === 1
+      ? `only candidate for ${cap}`
+      : `cheapest match for ${cap} (${candidates.length} candidates, range ${min}-${max} sats)`;
+  return {
+    candidate_count: candidates.length,
+    min_sats: min,
+    max_sats: max,
+    message: `Selected ${chosen.agent_id}: ${why}.`,
+  };
+}
+
+async function assemblePlan(
   capabilities: string[],
-  marketplaceAgents: AgentManifest[],
   request: string,
   consumerInputs: Record<string, unknown>,
   source: "template" | "claude",
   notes?: string
-): ExecutionPlan {
+): Promise<ExecutionPlan> {
   const steps: PlannedStep[] = [];
   // priorOutputs is a notional aggregator: at plan time we don't have real
   // outputs yet, but we use it to thread declared output field names so a
@@ -96,11 +115,12 @@ function assemblePlan(
 
   for (let i = 0; i < capabilities.length; i += 1) {
     const cap = capabilities[i];
-    const agent = findAgentForCapability(cap, marketplaceAgents);
+    const candidates = await getAgentsByCapability(cap);
+    const agent = await pickBestAgent(cap);
     if (!agent) {
       return {
         feasible: false,
-        reason: `no agent in marketplace can provide capability "${cap}"`,
+        reason: `No agent available for capability: ${cap}`,
       };
     }
 
@@ -110,6 +130,7 @@ function assemblePlan(
       capability: cap,
       fee_sats: agent.pricing.base_sats,
       inputs_for_agent: buildInputsForAgent(agent, request, consumerInputs, priorOutputs),
+      selection_rationale: rationaleFor(cap, candidates, agent),
     });
 
     for (const outKey of Object.keys(agent.outputs)) {
@@ -137,7 +158,6 @@ export async function planTask(
   if (template) {
     return assemblePlan(
       template.capabilities,
-      marketplaceAgents,
       request,
       consumerInputs,
       "template",
@@ -181,7 +201,6 @@ export async function planTask(
 
   return assemblePlan(
     steps.map((s) => s.capability_needed),
-    marketplaceAgents,
     request,
     consumerInputs,
     "claude"
