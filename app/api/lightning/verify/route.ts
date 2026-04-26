@@ -22,5 +22,10 @@ export async function POST(req: NextRequest) {
     return withCors({ error: "payment_hash is required" }, { status: 400 });
   }
 
-  return withCors(await verifyPayment(body.payment_hash));
+  const result = await verifyPayment(body.payment_hash);
+  // Backward compatibility: older agents expect { valid: true }.
+  return withCors({
+    ...result,
+    valid: result.verified,
+  });
 }
