@@ -46,7 +46,7 @@ interface MaestroState {
     kind: ConsumerKind,
     request: string,
     inputs: Record<string, unknown>,
-  ) => Promise<void>;
+  ) => Promise<import("./backend").MaestroJobResponse>;
 
   agents: Agent[];
   maestro: Agent;
@@ -83,7 +83,8 @@ const PLAN_REQUEST_IN = 100;
 const PLAN_MAESTRO_LIGHT = 700;
 const PLAN_LINES_FIRE = 1300;
 const PLAN_MATCH_SETTLE = 2400;
-const PLAN_HANDOFF = 3400;
+// Keep the "matching agents" moment visible long enough to read.
+const PLAN_HANDOFF = 6500;
 
 export const useMaestro = create<MaestroState>((set, get) => ({
   view: "landing",
@@ -164,18 +165,8 @@ export const useMaestro = create<MaestroState>((set, get) => ({
     }));
 
     const res = await submitJob(request, inputs);
-    if (res.status === "no_capability_match") {
-      set({ maestroAction: "No capable agent found", jobStatus: "idle" });
-      get().pushLog(`No capability match: ${res.reason}`, "info");
-      return;
-    }
-    if (res.status === "missing_inputs") {
-      set({ maestroAction: "Need more inputs", jobStatus: "idle" });
-      get().pushLog(`Missing inputs: ${res.missing_inputs.join(", ")}`, "info");
-      return;
-    }
 
-    const plan = res.plan;
+    const plan = (res as any).plan;
     const stepsRaw = isRecord(plan) ? plan.steps : undefined;
     const steps = Array.isArray(stepsRaw) ? stepsRaw : [];
     const agentIds = steps
@@ -184,6 +175,27 @@ export const useMaestro = create<MaestroState>((set, get) => ({
     const requiredCaps = steps
       .map((step) => (isRecord(step) ? String(step.capability ?? "") : ""))
       .filter(Boolean);
+
+    if (res.status === "no_capability_match") {
+      set({ maestroAction: "No capable agent found", jobStatus: "idle" });
+      get().pushLog(`No capability match: ${res.reason}`, "info");
+      return res;
+    }
+
+    if (res.status === "missing_inputs") {
+      // Still surface the planning overlay context (matched agents + pricing when present).
+      set({
+        requiredTags: requiredCaps,
+        matchedAgentIds: agentIds,
+        maestroAction: "Need more inputs",
+        jobStatus: "planning",
+        pricing: isRecord(res.pricing) ? (res.pricing as any) : null,
+        jobId: null,
+        invoice: null,
+      });
+      get().pushLog(`Missing inputs: ${res.missing_inputs.join(", ")}`, "info");
+      return res;
+    }
 
     // Keep the "Maestro is matching capabilities…" overlay visible briefly
     // (it was previously driven by mock timing; now we drive it off real plan data).
@@ -202,7 +214,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
         matchedAgentIds: agentIds,
         maestroAction: `Matched ${agentIds.length} specialist${agentIds.length === 1 ? "" : "s"}`,
       });
-    }, 900);
+    }, PLAN_MATCH_SETTLE);
 
     setTimeout(() => {
       set({
@@ -210,7 +222,9 @@ export const useMaestro = create<MaestroState>((set, get) => ({
         jobStatus: "in_progress",
       });
       get().pushLog(`Planned ${steps.length} step(s). Total: ${res.pricing.total} sats`, "info");
-    }, 1700);
+    }, PLAN_HANDOFF);
+
+    return res;
   },
 
   agents: [],

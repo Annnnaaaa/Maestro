@@ -219,14 +219,21 @@ export async function payAgent(
           ? process.env.MAGIC_HOUR_AGENT_PAY_INVOICE
           : undefined;
     if (externalInvoice) {
-      await lightningClient.payInvoice({ invoice: externalInvoice });
-      adjustLedger(fromAgentId, toAgentId, amountSats);
-      const settled_at = Date.now();
-      const payment_hash = `paid_${randomHex(24)}`;
-      console.log(
-        `⚡ ${amountSats} sats: ${fromAgentId} -> ${toAgentId} [${payment_hash}] (${settled_at - startedAt}ms) (external invoice)`
-      );
-      return { success: true, payment_hash, settled_at };
+      try {
+        await lightningClient.payInvoice({ invoice: externalInvoice });
+        adjustLedger(fromAgentId, toAgentId, amountSats);
+        const settled_at = Date.now();
+        const payment_hash = `paid_${randomHex(24)}`;
+        console.log(
+          `⚡ ${amountSats} sats: ${fromAgentId} -> ${toAgentId} [${payment_hash}] (${settled_at - startedAt}ms) (external invoice)`
+        );
+        return { success: true, payment_hash, settled_at };
+      } catch (e) {
+        // A static external invoice will become "already paid" after the first run.
+        // Don't force stub mode; fall back to a fresh invoice payment so the wallet
+        // continues to show real transactions.
+        console.error("[lightning] external invoice payment failed; falling back", e);
+      }
     }
 
     const invoice = await lightningClient.makeInvoice({

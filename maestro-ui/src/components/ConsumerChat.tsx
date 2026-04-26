@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMaestro } from "@/lib/store";
 import type { ChatMessage, SpecField } from "@/lib/types";
 import { Send, Sparkles, Zap } from "lucide-react";
-import { intake, submitJob } from "@/lib/backend";
+import { intake } from "@/lib/backend";
 
 type Question = {
   key: "request" | string;
@@ -108,7 +108,6 @@ export function ConsumerChat() {
           }
         }
 
-        // Call backend once to learn what's missing.
         const inputs: Record<string, unknown> = {};
         const allFields: SpecField[] = [
           ...spec,
@@ -124,16 +123,22 @@ export function ConsumerChat() {
           inputs[f.key] = f.value;
         }
 
-        const jobCheck = await submitJob(userText, inputs);
-        if (jobCheck.status === "missing_inputs") {
-          setMissingKeys(jobCheck.missing_inputs);
-          const first = jobCheck.missing_inputs[0];
+        const jobRes = await startJob(
+          `Job: ${String((inputs as any).product_name ?? "request")}`,
+          "human",
+          userText,
+          inputs,
+        );
+
+        if (jobRes.status === "missing_inputs") {
+          setMissingKeys(jobRes.missing_inputs);
+          const first = jobRes.missing_inputs[0];
           setMessages((m) => [
             ...m,
             {
               id: crypto.randomUUID(),
               role: "maestro",
-              content: `I just need ${jobCheck.missing_inputs.length} more detail(s).`,
+              content: `I just need ${jobRes.missing_inputs.length} more detail(s).`,
             },
             ...(first
               ? [
@@ -149,16 +154,10 @@ export function ConsumerChat() {
           setStep(1);
           return;
         }
-        if (jobCheck.status === "ready") {
-          // Use canonical store flow to keep overlay/pricing consistent
-          await startJob(
-            `Job: ${String((inputs as any).product_name ?? "request")}`,
-            "human",
-            userText,
-            inputs,
-          );
+        if (jobRes.status === "ready") {
           setThinking(false);
           setStep(questions.length);
+          setView("ops");
           return;
         }
         setThinking(false);
@@ -187,7 +186,7 @@ export function ConsumerChat() {
       ]);
 
       try {
-        await startJob(
+        const res = await startJob(
           `Job: ${String((inputs as any).product_name ?? "request")}`,
           "human",
           requestText,
@@ -195,6 +194,7 @@ export function ConsumerChat() {
         );
         setThinking(false);
         setStep(questions.length);
+        if (res.status === "ready") setView("ops");
       } catch {
         setThinking(false);
         setMessages((m) => [
@@ -328,9 +328,7 @@ export function ConsumerChat() {
         <div className="h-[calc(100svh-130px)] overflow-y-auto rounded-2xl border border-border bg-surface/60 p-5 shadow-elevated backdrop-blur">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-mono text-xs tracking-wider text-muted-foreground">JOB SPEC</h3>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {spec.length}/3 fields
-            </span>
+            <span className="font-mono text-[10px] text-muted-foreground">{spec.length} fields</span>
           </div>
           {spec.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-6 text-center">
