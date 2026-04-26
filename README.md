@@ -134,10 +134,23 @@ Example config (edit paths):
 
 ### UI screenshots
 
-No screenshots are committed yet. If you want them to show on GitHub:
-- run the UI (`http://localhost:8080`)
-- take screenshots of **Landing**, **Consumer Chat**, and **Operations Dashboard**
-- save them under `docs/screenshots/` and link them from this README.
+Screenshots (from `docs/`):
+
+#### Landing
+
+![Landing page](docs/LandingPage.png)
+
+#### Consumer Chat
+
+![Consumer chat](docs/ChatPage.png)
+
+#### Operations Dashboard
+
+![Operations dashboard](docs/OperationsPage.png)
+
+#### Hiring flow
+
+![Hiring flow](docs/HiringPage.png)
 
 ## Legacy setup (single service)
 
