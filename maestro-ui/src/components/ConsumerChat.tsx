@@ -34,10 +34,15 @@ export function ConsumerChat() {
     setThinking(true);
 
     setTimeout(() => {
+      // The previous step defines which spec field the user's last reply fills.
+      const prev = CHAT_SCRIPT[step - 1];
+      if (prev?.spec) {
+        addSpec({ ...prev.spec, value: userText });
+      }
+
       const next = CHAT_SCRIPT[step];
       if (next) {
         setMessages((m) => [...m, { id: crypto.randomUUID(), role: "maestro", content: next.maestro }]);
-        if (next.spec) addSpec(next.spec);
       }
       setThinking(false);
       setStep((s) => s + 1);
@@ -109,7 +114,7 @@ export function ConsumerChat() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => {
-                  startJob("Coffee Mug Product Video", "human");
+                  startJob("Coffee Mug Product Video", "human").catch(() => {});
                   setView("ops");
                 }}
                 className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl gradient-lightning px-6 py-3.5 text-base font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01] active:scale-[0.99]"
