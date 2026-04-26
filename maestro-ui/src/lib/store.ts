@@ -74,8 +74,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
   setView: (v) => set({ view: v }),
 
   spec: [],
-  addSpec: (f) =>
-    set((s) => (s.spec.some((x) => x.key === f.key) ? s : { spec: [...s.spec, f] })),
+  addSpec: (f) => set((s) => (s.spec.some((x) => x.key === f.key) ? s : { spec: [...s.spec, f] })),
   resetSpec: () => set({ spec: [] }),
 
   consumerKind: "human",
@@ -100,17 +99,27 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       consumerPaid: false,
       requiredTags: tags,
       matchedAgentIds: [],
-      log: [{ id: crypto.randomUUID(), text: `Job #${String(s.jobNumber).padStart(3, "0")} received - ${title}`, ts: Date.now(), kind: "info" }],
+      log: [
+        {
+          id: crypto.randomUUID(),
+          text: `Job #${String(s.jobNumber).padStart(3, "0")} received - ${title}`,
+          ts: Date.now(),
+          kind: "info",
+        },
+      ],
       payments: [],
       agents: s.agents.map((a) => ({ ...a, status: "idle" as const })),
     }));
 
     // PLANNING PHASE
-    setTimeout(() => set({ maestroAction: "Scanning marketplace for capabilities…" }), PLAN_MAESTRO_LIGHT);
+    setTimeout(
+      () => set({ maestroAction: "Scanning marketplace for capabilities…" }),
+      PLAN_MAESTRO_LIGHT,
+    );
 
     setTimeout(() => {
-      const matches = get().agents
-        .filter((a) => a.capability_tags.some((t) => tags.includes(t)))
+      const matches = get()
+        .agents.filter((a) => a.capability_tags.some((t) => tags.includes(t)))
         .map((a) => a.id);
       set({ matchedAgentIds: matches, maestroAction: `Matched ${matches.length} specialists` });
       get().pushLog(`Capability match: [${tags.join(", ")}] → ${matches.length} agents`, "info");
@@ -138,7 +147,8 @@ export const useMaestro = create<MaestroState>((set, get) => ({
           if (evt.maestroAction) set({ maestroAction: evt.maestroAction });
           if (evt.kind === "status" && evt.status) {
             get().setAgentStatus(evt.status.agent, evt.status.status);
-            if (evt.status.action) get().pushLog(`${evt.status.agent}: ${evt.status.action}`, "status");
+            if (evt.status.action)
+              get().pushLog(`${evt.status.agent}: ${evt.status.action}`, "status");
           }
           if (evt.kind === "payment" && evt.payment) {
             get().pushPayment(evt.payment);
@@ -187,7 +197,12 @@ export const useMaestro = create<MaestroState>((set, get) => ({
         maestro: adjust(s.maestro),
         gmv: s.gmv + p.amount,
         log: [
-          { id: crypto.randomUUID(), text: `⚡ ${p.fromName} → ${p.toName}: ${p.amount} sats`, ts: Date.now(), kind: "info" as const },
+          {
+            id: crypto.randomUUID(),
+            text: `⚡ ${p.fromName} → ${p.toName}: ${p.amount} sats`,
+            ts: Date.now(),
+            kind: "info" as const,
+          },
           ...s.log,
         ].slice(0, 60),
       };

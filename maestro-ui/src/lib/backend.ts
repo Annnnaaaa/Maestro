@@ -11,8 +11,20 @@ type AgentManifest = {
 
 export type MaestroJobResponse =
   | { status: "no_capability_match"; reason: string }
-  | { status: "missing_inputs"; missing_inputs: string[]; for_agent: string; plan: unknown; pricing?: unknown }
-  | { status: "ready"; jobId: string; plan: unknown; pricing: { subtotal: number; margin: number; total: number }; invoice: { invoice: string; payment_hash: string } };
+  | {
+      status: "missing_inputs";
+      missing_inputs: string[];
+      for_agent: string;
+      plan: unknown;
+      pricing?: unknown;
+    }
+  | {
+      status: "ready";
+      jobId: string;
+      plan: unknown;
+      pricing: { subtotal: number; margin: number; total: number };
+      invoice: { invoice: string; payment_hash: string };
+    };
 
 export type ProgressEvent =
   | { step: "planning"; plan?: unknown }
@@ -22,8 +34,8 @@ export type ProgressEvent =
   | { step: "error"; message?: string; agent?: string };
 
 export function backendBase(): string {
-  const env = (import.meta as any).env ?? {};
-  return (env.VITE_BACKEND_URL as string | undefined) ?? "http://localhost:3000";
+  const env = import.meta.env as Record<string, string | undefined>;
+  return env.VITE_BACKEND_URL ?? "http://localhost:3000";
 }
 
 function avatarFor(agentId: string, capability: string): string {
@@ -68,7 +80,10 @@ export async function fetchMaestro(): Promise<Agent> {
   return toUiAgent(data);
 }
 
-export async function submitJob(request: string, inputs: Record<string, unknown>): Promise<MaestroJobResponse> {
+export async function submitJob(
+  request: string,
+  inputs: Record<string, unknown>,
+): Promise<MaestroJobResponse> {
   const res = await fetch(`${backendBase()}/api/maestro/job`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -77,11 +92,15 @@ export async function submitJob(request: string, inputs: Record<string, unknown>
   return (await res.json()) as MaestroJobResponse;
 }
 
-export async function streamExecute(jobId: string, onEvent: (e: ProgressEvent) => void): Promise<void> {
-  const res = await fetch(`${backendBase()}/api/maestro/execute`, {
+export async function streamExecute(
+  jobId: string,
+  onEvent: (e: ProgressEvent) => void,
+): Promise<void> {
+  // Backend moved to a payment-gated execute route:
+  //   POST /api/maestro/job/:jobId/execute
+  // For UI backwards-compat, we call the new route directly.
+  const res = await fetch(`${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/execute`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jobId }),
   });
   if (!res.ok || !res.body) throw new Error(`execute: ${res.status}`);
 
@@ -107,4 +126,3 @@ export async function streamExecute(jobId: string, onEvent: (e: ProgressEvent) =
     }
   }
 }
-

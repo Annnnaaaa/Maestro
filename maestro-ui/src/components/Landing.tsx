@@ -1,5 +1,13 @@
-import { motion, useScroll, useTransform, useMotionValue, useSpring, type Variants } from "framer-motion";
-import { useEffect, useRef } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useSpring,
+  useMotionTemplate,
+  type Variants,
+} from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import {
   Zap,
   Bot,
@@ -29,8 +37,12 @@ const stagger: Variants = {
 
 export function Landing() {
   const setView = useMaestro((s) => s.setView);
+  const [hydrated, setHydrated] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end end"] });
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
   const progressBar = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
   // Parallax mouse glow
@@ -39,6 +51,10 @@ export function Landing() {
   const sx = useSpring(mx, { stiffness: 60, damping: 20 });
   const sy = useSpring(my, { stiffness: 60, damping: 20 });
   const heroRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     const el = heroRef.current;
@@ -54,6 +70,7 @@ export function Landing() {
 
   const glowX = useTransform(sx, (v) => `${v * 100}%`);
   const glowY = useTransform(sy, (v) => `${v * 100}%`);
+  const glowBg = useMotionTemplate`radial-gradient(600px circle at ${glowX} ${glowY}, color-mix(in oklab, var(--lightning) 35%, transparent), transparent 60%)`;
 
   return (
     <div ref={containerRef} className="relative">
@@ -69,7 +86,7 @@ export function Landing() {
         <motion.div
           className="pointer-events-none absolute -inset-40 opacity-50"
           style={{
-            background: `radial-gradient(600px circle at ${glowX.get()} ${glowY.get()}, color-mix(in oklab, var(--lightning) 35%, transparent), transparent 60%)`,
+            background: glowBg,
             x: useTransform(sx, (v) => (v - 0.5) * 40),
             y: useTransform(sy, (v) => (v - 0.5) * 40),
           }}
@@ -88,7 +105,13 @@ export function Landing() {
         />
 
         <div className="relative mx-auto max-w-[1200px] px-4 py-20 sm:px-6 sm:py-24 lg:py-32">
-          <motion.div initial="hidden" animate="show" variants={stagger} className="space-y-8">
+          <motion.div
+            key={hydrated ? "hero_client" : "hero_server"}
+            initial={hydrated ? "hidden" : false}
+            animate="show"
+            variants={stagger}
+            className="space-y-8"
+          >
             <motion.div
               variants={fadeUp}
               className="inline-flex items-center gap-2 rounded-full border border-lightning/40 bg-lightning/10 px-3 py-1 font-mono text-[11px] tracking-wider text-lightning"
@@ -107,9 +130,13 @@ export function Landing() {
               </span>
             </motion.h1>
 
-            <motion.p variants={fadeUp} className="max-w-2xl text-base text-muted-foreground sm:text-lg md:text-xl">
-              Maestro is an orchestrator that takes any request, finds the right specialists in an open
-              marketplace, and pays them in sats over the Lightning Network - autonomously, in seconds.
+            <motion.p
+              variants={fadeUp}
+              className="max-w-2xl text-base text-muted-foreground sm:text-lg md:text-xl"
+            >
+              Maestro is an orchestrator that takes any request, finds the right specialists in an
+              open marketplace, and pays them in sats over the Lightning Network - autonomously, in
+              seconds.
             </motion.p>
 
             <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">
@@ -128,7 +155,10 @@ export function Landing() {
               </button>
             </motion.div>
 
-            <motion.div variants={fadeUp} className="flex flex-wrap gap-6 pt-6 font-mono text-xs text-muted-foreground">
+            <motion.div
+              variants={fadeUp}
+              className="flex flex-wrap gap-6 pt-6 font-mono text-xs text-muted-foreground"
+            >
               {[
                 ["⚡", "Settles in <1s"],
                 ["🤖", "Agent-to-agent payments"],
@@ -148,19 +178,32 @@ export function Landing() {
       </section>
 
       {/* SHORT DESCRIPTION */}
-      <Section index="00" tag="SHORT DESCRIPTION" title="Maestro in one sentence" icon={Sparkles}>
+      <Section
+        hydrated={hydrated}
+        index="00"
+        tag="SHORT DESCRIPTION"
+        title="Maestro in one sentence"
+        icon={Sparkles}
+      >
         <motion.p
           variants={fadeUp}
           className="text-xl leading-snug text-foreground sm:text-2xl md:text-3xl"
         >
-          A general-purpose AI orchestrator that turns any prompt into a coordinated team of specialist
-          agents, paying them instantly in <span className="text-lightning">sats over Lightning</span> -
-          no contracts, no platforms, no middlemen.
+          A general-purpose AI orchestrator that turns any prompt into a coordinated team of
+          specialist agents, paying them instantly in{" "}
+          <span className="text-lightning">sats over Lightning</span> - no contracts, no platforms,
+          no middlemen.
         </motion.p>
       </Section>
 
       {/* 1. PROBLEM */}
-      <Section index="01" tag="PROBLEM & CHALLENGE" title="AI agents can't pay each other" icon={Target}>
+      <Section
+        hydrated={hydrated}
+        index="01"
+        tag="PROBLEM & CHALLENGE"
+        title="AI agents can't pay each other"
+        icon={Target}
+      >
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <h3 className="mb-3 font-mono text-xs tracking-wider text-destructive">THE PAIN</h3>
@@ -179,19 +222,29 @@ export function Landing() {
             </ul>
           </Card>
           <Card glow="lightning">
-            <h3 className="mb-3 font-mono text-xs tracking-wider text-lightning">THE OPPORTUNITY</h3>
+            <h3 className="mb-3 font-mono text-xs tracking-wider text-lightning">
+              THE OPPORTUNITY
+            </h3>
             <p className="text-muted-foreground">
-              If agents could discover and pay each other in milliseconds, the AI economy would self-assemble.
-              The missing piece is a money layer that's <span className="text-foreground">programmable, instant,
-              and as small as a fraction of a cent.</span> Lightning is that layer - it's just been waiting
-              for an orchestrator.
+              If agents could discover and pay each other in milliseconds, the AI economy would
+              self-assemble. The missing piece is a money layer that's{" "}
+              <span className="text-foreground">
+                programmable, instant, and as small as a fraction of a cent.
+              </span>{" "}
+              Lightning is that layer - it's just been waiting for an orchestrator.
             </p>
           </Card>
         </div>
       </Section>
 
       {/* 2. TARGET AUDIENCE */}
-      <Section index="02" tag="TARGET AUDIENCE" title="Who benefits" icon={Users}>
+      <Section
+        hydrated={hydrated}
+        index="02"
+        tag="TARGET AUDIENCE"
+        title="Who benefits"
+        icon={Users}
+      >
         <div className="grid gap-5 md:grid-cols-3">
           {[
             {
@@ -219,7 +272,9 @@ export function Landing() {
               whileHover={{ y: -4 }}
               className="rounded-xl border border-border bg-surface p-6 transition-shadow hover:shadow-elevated"
             >
-              <div className={`font-mono text-[10px] tracking-wider ${x.c}`}>{x.tag.toUpperCase()}</div>
+              <div className={`font-mono text-[10px] tracking-wider ${x.c}`}>
+                {x.tag.toUpperCase()}
+              </div>
               <h3 className="mt-2 text-lg font-bold">{x.t}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{x.d}</p>
             </motion.div>
@@ -228,7 +283,13 @@ export function Landing() {
       </Section>
 
       {/* 3. SOLUTION & FEATURES */}
-      <Section index="03" tag="SOLUTION & CORE FEATURES" title="How Maestro works" icon={Bot}>
+      <Section
+        hydrated={hydrated}
+        index="03"
+        tag="SOLUTION & CORE FEATURES"
+        title="How Maestro works"
+        icon={Bot}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           {[
             {
@@ -271,10 +332,18 @@ export function Landing() {
       </Section>
 
       {/* 4. USP */}
-      <Section index="04" tag="UNIQUE SELLING PROPOSITION" title="Why Maestro is different" icon={Sparkles}>
+      <Section
+        hydrated={hydrated}
+        index="04"
+        tag="UNIQUE SELLING PROPOSITION"
+        title="Why Maestro is different"
+        icon={Sparkles}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <div className="font-mono text-[10px] tracking-wider text-muted-foreground">EXISTING TOOLS</div>
+            <div className="font-mono text-[10px] tracking-wider text-muted-foreground">
+              EXISTING TOOLS
+            </div>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               {[
                 "One model, one task - locked to a single vendor",
@@ -307,17 +376,38 @@ export function Landing() {
       </Section>
 
       {/* 5. IMPLEMENTATION */}
-      <Section index="05" tag="IMPLEMENTATION & TECHNOLOGY" title="Built on a modern, web-native stack" icon={Code2}>
+      <Section
+        hydrated={hydrated}
+        index="05"
+        tag="IMPLEMENTATION & TECHNOLOGY"
+        title="Built on a modern, web-native stack"
+        icon={Code2}
+      >
         <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <Card>
             <h3 className="mb-3 font-mono text-xs tracking-wider text-electric">ARCHITECTURE</h3>
             <ol className="space-y-4">
               {[
-                ["Frontend", "React 19 + TanStack Start, Tailwind v4 design tokens, Framer Motion for kinetic UI."],
-                ["State", "Zustand store drives the orchestration state machine: planning → matching → executing → complete."],
-                ["Marketplace API", "REST endpoints (GET/POST /api/marketplace) backed by Lovable Cloud - agents register via manifest JSON."],
-                ["Payments", "Lightning Network (LND/Phoenix-compatible) - 90-sat escrow, fan-out payouts, settled sub-second."],
-                ["Capability matching", "Tag-based intersection between job requirements and agent.capability_tags - extensible to embeddings."],
+                [
+                  "Frontend",
+                  "React 19 + TanStack Start, Tailwind v4 design tokens, Framer Motion for kinetic UI.",
+                ],
+                [
+                  "State",
+                  "Zustand store drives the orchestration state machine: planning → matching → executing → complete.",
+                ],
+                [
+                  "Marketplace API",
+                  "REST endpoints (GET/POST /api/marketplace) backed by Lovable Cloud - agents register via manifest JSON.",
+                ],
+                [
+                  "Payments",
+                  "Lightning Network (LND/Phoenix-compatible) - 90-sat escrow, fan-out payouts, settled sub-second.",
+                ],
+                [
+                  "Capability matching",
+                  "Tag-based intersection between job requirements and agent.capability_tags - extensible to embeddings.",
+                ],
               ].map(([k, v], i) => (
                 <li key={k} className="flex gap-4">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background font-mono text-[11px] text-electric">
@@ -335,9 +425,18 @@ export function Landing() {
             <h3 className="mb-3 font-mono text-xs tracking-wider text-electric">STACK</h3>
             <div className="flex flex-wrap gap-2">
               {[
-                "React 19", "TanStack Start", "TypeScript", "Tailwind v4",
-                "Framer Motion", "Zustand", "Lovable Cloud", "Lightning Network",
-                "BOLT11", "Webhooks", "Cloudflare Workers", "Edge SSR",
+                "React 19",
+                "TanStack Start",
+                "TypeScript",
+                "Tailwind v4",
+                "Framer Motion",
+                "Zustand",
+                "Lovable Cloud",
+                "Lightning Network",
+                "BOLT11",
+                "Webhooks",
+                "Cloudflare Workers",
+                "Edge SSR",
               ].map((t) => (
                 <motion.span
                   key={t}
@@ -353,7 +452,13 @@ export function Landing() {
       </Section>
 
       {/* 6. RESULTS */}
-      <Section index="06" tag="RESULTS & IMPACT" title="What we shipped" icon={Trophy}>
+      <Section
+        hydrated={hydrated}
+        index="06"
+        tag="RESULTS & IMPACT"
+        title="What we shipped"
+        icon={Trophy}
+      >
         <div className="grid gap-4 md:grid-cols-4">
           {[
             ["90", "sats", "per full video job - end-to-end"],
@@ -376,13 +481,17 @@ export function Landing() {
           ))}
         </div>
 
-        <motion.div variants={fadeUp} className="mt-8 rounded-xl border border-lightning/30 bg-lightning/5 p-6">
+        <motion.div
+          variants={fadeUp}
+          className="mt-8 rounded-xl border border-lightning/30 bg-lightning/5 p-6"
+        >
           <h3 className="font-mono text-xs tracking-wider text-lightning">VALUE DELIVERED</h3>
           <p className="mt-3 text-foreground">
-            Maestro proves that an AI economy doesn't need to be built - it can <span className="text-lightning">emerge</span>.
-            With one orchestrator and Lightning rails, specialist models become composable services, consumers
-            get one front door for everything, and agents themselves become first-class economic actors. The
-            same demo flow works whether the customer is a human typing in chat or another agent calling an API.
+            Maestro proves that an AI economy doesn't need to be built - it can{" "}
+            <span className="text-lightning">emerge</span>. With one orchestrator and Lightning
+            rails, specialist models become composable services, consumers get one front door for
+            everything, and agents themselves become first-class economic actors. The same demo flow
+            works whether the customer is a human typing in chat or another agent calling an API.
           </p>
         </motion.div>
       </Section>
@@ -424,12 +533,14 @@ export function Landing() {
 }
 
 function Section({
+  hydrated,
   index,
   tag,
   title,
   icon: Icon,
   children,
 }: {
+  hydrated: boolean;
   index: string;
   tag: string;
   title: string;
@@ -440,8 +551,10 @@ function Section({
     <section className="border-b border-border">
       <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20">
         <motion.div
-          initial="hidden"
-          whileInView="show"
+          key={hydrated ? `sec_${index}_client` : `sec_${index}_server`}
+          initial={hydrated ? "hidden" : false}
+          animate={hydrated ? undefined : "show"}
+          whileInView={hydrated ? "show" : undefined}
           viewport={{ once: true, margin: "-80px" }}
           variants={stagger}
           className="space-y-8"

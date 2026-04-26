@@ -114,7 +114,8 @@ export interface ChatStep {
 
 export const CHAT_SCRIPT: ChatStep[] = [
   {
-    maestro: "Got it - a product video for your coffee mug. What's the mug called and what's the vibe?",
+    maestro:
+      "Got it - a product video for your coffee mug. What's the mug called and what's the vibe?",
     userPrompt: "Tell Maestro about your product…",
     userReply: "It's called Ember Mug. Cozy, warm, morning-ritual vibe.",
     spec: { key: "product_name", label: "Product", value: "Ember Mug" },
@@ -149,24 +150,108 @@ export interface JobEvent {
   delay: number;
   kind: "status" | "payment" | "complete";
   status?: { agent: string; status: "hired" | "working" | "done"; action?: string };
-  payment?: { from: string; fromName: string; to: string; toName: string; amount: number; memo: string };
+  payment?: {
+    from: string;
+    fromName: string;
+    to: string;
+    toName: string;
+    amount: number;
+    memo: string;
+  };
   maestroAction?: string;
 }
 
 export const JOB_SEQUENCE: JobEvent[] = [
-  { delay: 600, kind: "status", maestroAction: "Decomposing brief into tasks…", status: { agent: "maestro", status: "working" } },
-  { delay: 1800, kind: "status", maestroAction: "Hiring Script Agent…", status: { agent: "script", status: "hired" } },
-  { delay: 2400, kind: "payment", payment: { from: "maestro", fromName: "Maestro", to: "script", toName: "Script Agent", amount: 15, memo: "script: ember mug 15s" } },
-  { delay: 3000, kind: "status", status: { agent: "script", status: "working", action: "Drafting script…" } },
-  { delay: 5200, kind: "status", status: { agent: "script", status: "done", action: "Script delivered" } },
-  { delay: 5600, kind: "status", maestroAction: "Hiring Voice Agent…", status: { agent: "voice", status: "hired" } },
-  { delay: 6000, kind: "payment", payment: { from: "maestro", fromName: "Maestro", to: "voice", toName: "Voice Agent", amount: 8, memo: "voiceover: warm female" } },
-  { delay: 6500, kind: "status", status: { agent: "voice", status: "working", action: "Synthesizing voiceover…" } },
-  { delay: 8800, kind: "status", status: { agent: "voice", status: "done", action: "Voiceover delivered" } },
-  { delay: 9200, kind: "status", maestroAction: "Hiring Visual Agent…", status: { agent: "visual", status: "hired" } },
-  { delay: 9600, kind: "payment", payment: { from: "maestro", fromName: "Maestro", to: "visual", toName: "Visual Agent", amount: 45, memo: "render: 9:16 cinematic" } },
-  { delay: 10100, kind: "status", status: { agent: "visual", status: "working", action: "Rendering video…" } },
-  { delay: 13800, kind: "status", status: { agent: "visual", status: "done", action: "Video rendered" } },
+  {
+    delay: 600,
+    kind: "status",
+    maestroAction: "Decomposing brief into tasks…",
+    status: { agent: "maestro", status: "working" },
+  },
+  {
+    delay: 1800,
+    kind: "status",
+    maestroAction: "Hiring Script Agent…",
+    status: { agent: "script", status: "hired" },
+  },
+  {
+    delay: 2400,
+    kind: "payment",
+    payment: {
+      from: "maestro",
+      fromName: "Maestro",
+      to: "script",
+      toName: "Script Agent",
+      amount: 15,
+      memo: "script: ember mug 15s",
+    },
+  },
+  {
+    delay: 3000,
+    kind: "status",
+    status: { agent: "script", status: "working", action: "Drafting script…" },
+  },
+  {
+    delay: 5200,
+    kind: "status",
+    status: { agent: "script", status: "done", action: "Script delivered" },
+  },
+  {
+    delay: 5600,
+    kind: "status",
+    maestroAction: "Hiring Voice Agent…",
+    status: { agent: "voice", status: "hired" },
+  },
+  {
+    delay: 6000,
+    kind: "payment",
+    payment: {
+      from: "maestro",
+      fromName: "Maestro",
+      to: "voice",
+      toName: "Voice Agent",
+      amount: 8,
+      memo: "voiceover: warm female",
+    },
+  },
+  {
+    delay: 6500,
+    kind: "status",
+    status: { agent: "voice", status: "working", action: "Synthesizing voiceover…" },
+  },
+  {
+    delay: 8800,
+    kind: "status",
+    status: { agent: "voice", status: "done", action: "Voiceover delivered" },
+  },
+  {
+    delay: 9200,
+    kind: "status",
+    maestroAction: "Hiring Visual Agent…",
+    status: { agent: "visual", status: "hired" },
+  },
+  {
+    delay: 9600,
+    kind: "payment",
+    payment: {
+      from: "maestro",
+      fromName: "Maestro",
+      to: "visual",
+      toName: "Visual Agent",
+      amount: 45,
+      memo: "render: 9:16 cinematic",
+    },
+  },
+  {
+    delay: 10100,
+    kind: "status",
+    status: { agent: "visual", status: "working", action: "Rendering video…" },
+  },
+  {
+    delay: 13800,
+    kind: "status",
+    status: { agent: "visual", status: "done", action: "Video rendered" },
+  },
   { delay: 14200, kind: "status", maestroAction: "Stitching final deliverable…" },
   { delay: 14900, kind: "complete", maestroAction: "Job complete. Awaiting consumer payment." },
 ];
