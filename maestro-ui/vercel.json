@@ -5,6 +5,14 @@
       "includeFiles": "dist/**"
     }
   },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "^/assets/(.*)$", "dest": "/dist/client/assets/$1" },
+    {
+      "src": "^/(.*\\.(css|js|mjs|png|jpg|jpeg|webp|svg|ico|txt|json|map))$",
+      "dest": "/dist/client/$1"
+    },
+    { "src": "^/(.*)$", "dest": "/api/index" }
+  ]
 }
 
