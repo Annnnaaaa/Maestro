@@ -213,7 +213,11 @@ export async function payAgent(
     // Useful when you only have one NWC wallet but still need a real send you
     // can see in the wallet's transaction list.
     const externalInvoice =
-      toAgentId === "json2video-agent" ? process.env.JSON2VIDEO_AGENT_PAY_INVOICE : undefined;
+      toAgentId === "json2video-agent"
+        ? process.env.JSON2VIDEO_AGENT_PAY_INVOICE
+        : toAgentId === "magichour-video-agent"
+          ? process.env.MAGIC_HOUR_AGENT_PAY_INVOICE
+          : undefined;
     if (externalInvoice) {
       await lightningClient.payInvoice({ invoice: externalInvoice });
       adjustLedger(fromAgentId, toAgentId, amountSats);
