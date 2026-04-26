@@ -30,7 +30,8 @@ const PLACEHOLDER_MANIFESTS: AgentManifest[] = [
     },
     pricing: { base_sats: 1 },
     typical_completion_seconds: 35,
-    endpoint: "http://localhost:3005/api/agent/magichour",
+    // endpoint: "http://localhost:3005/api/agent/magichour",
+    endpoint: "https://maestro-magicalhour-video.vercel.app",
   },
   {
     agent_id: "json2video-agent",
