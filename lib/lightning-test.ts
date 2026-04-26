@@ -14,9 +14,9 @@ async function main() {
   console.log({ realBalance });
 
   console.log("Running test payments...");
-  console.log(await payAgent("foreman", "script-agent", 15, "test payment 1"));
-  console.log(await payAgent("foreman", "voice-agent", 8, "test payment 2"));
-  console.log(await payAgent("foreman", "visual-agent", 45, "test payment 3"));
+  console.log(await payAgent("maestro", "script-agent", 15, "test payment 1"));
+  console.log(await payAgent("maestro", "voice-agent", 8, "test payment 2"));
+  console.log(await payAgent("maestro", "visual-agent", 45, "test payment 3"));
 
   console.log("Ledger snapshot:");
   console.log(getLedgerSnapshot());

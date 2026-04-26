@@ -1,28 +1,21 @@
-import { askClaude } from "./llm";
-import { Agent, getAgent, getAgents } from "./marketplace";
-import { payInvoice } from "./lightning";
+import { AgentManifest } from "./manifest-schema";
+import { getAgent, getAgents } from "./marketplace";
+import { ExecutionPlan, PlannedStep, planTask } from "./planner";
+import { payAgent } from "./lightning";
+import { createInvoice } from "./lightning";
 
-export interface VideoSpec {
-  product_name: string;
-  product_description: string;
-  style: "cinematic" | "playful" | "minimal";
-  duration_seconds: number;
-  voiceover_tone: string;
-  target_audience: string;
-}
-
-export interface PlannedAgent {
-  id: string;
-  name: string;
-  fee_sats: number;
-}
+export const MAESTRO_AGENT_ID = "maestro";
+export const MAESTRO_MARGIN_PCT = 0.15;
 
 export interface Job {
   id: string;
-  spec: VideoSpec;
-  plan: PlannedAgent[];
-  totalCost: number;
-  margin: number;
+  request: string;
+  consumerInputs: Record<string, unknown>;
+  plan: Extract<ExecutionPlan, { feasible: true }>;
+  subtotalSats: number;
+  marginSats: number;
+  totalSats: number;
+  invoice?: { invoice: string; payment_hash: string };
   createdAt: number;
   status: "planned" | "running" | "complete" | "error";
   results: Record<string, unknown>;
@@ -30,19 +23,19 @@ export interface Job {
 }
 
 export interface ProgressEvent {
-  step: "hiring" | "working" | "complete" | "error";
+  step: "planning" | "hiring" | "working" | "complete" | "error";
   agent?: string;
+  capability?: string;
   paymentSent?: number;
   output?: unknown;
   message?: string;
   finalOutput?: unknown;
+  plan?: ExecutionPlan;
 }
 
-const MAESTRO_MARGIN_PCT = 0.15;
-
-const MAESTRO_SYSTEM_PROMPT = `You are Maestro, an orchestrator agent for a marketplace of specialist agents. Given a consumer request for a product video, output a JSON spec with fields: product_name, product_description, style (one of: cinematic/playful/minimal), duration_seconds, voiceover_tone, target_audience. If any field is missing or ambiguous from the input, return {needs_clarification: true, questions: [...]} with at most 2 questions. Otherwise return {needs_clarification: false, spec: {...}}.`;
-
-const g = globalThis as unknown as { __maestro_jobs?: Map<string, Job> };
+const g = globalThis as typeof globalThis & {
+  __maestro_jobs?: Map<string, Job>;
+};
 if (!g.__maestro_jobs) g.__maestro_jobs = new Map();
 const jobs = g.__maestro_jobs;
 
@@ -54,118 +47,103 @@ export function saveJob(job: Job): void {
   jobs.set(job.id, job);
 }
 
-function safeJsonParse(raw: string): unknown {
-  // Models sometimes wrap JSON in ```json fences. Strip them.
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fenced ? fenced[1] : trimmed;
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    // Try to find the first {...} block
-    const match = candidate.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        return JSON.parse(match[0]);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-}
-
-export interface MaestroAnalysis {
-  needsClarification: boolean;
-  questions?: string[];
-  spec?: VideoSpec;
-}
-
-export async function analyzeRequest(
-  consumerRequest: string,
-  providedSpecs?: Record<string, unknown>
-): Promise<MaestroAnalysis> {
-  const userPrompt = providedSpecs
-    ? `Consumer request: ${consumerRequest}\n\nProvided specs (use these as ground truth, do not re-ask): ${JSON.stringify(providedSpecs)}`
-    : `Consumer request: ${consumerRequest}`;
-
-  const raw = await askClaude(MAESTRO_SYSTEM_PROMPT, userPrompt);
-  const parsed = safeJsonParse(raw) as
-    | { needs_clarification: true; questions: string[] }
-    | { needs_clarification: false; spec: VideoSpec }
-    | null;
-
-  if (!parsed) {
-    return {
-      needsClarification: true,
-      questions: [
-        "Could you describe the product in more detail (name, what it does, who it's for)?",
-      ],
-    };
-  }
-
-  if ((parsed as { needs_clarification: boolean }).needs_clarification) {
-    const qs = (parsed as { questions?: string[] }).questions ?? [];
-    return { needsClarification: true, questions: qs.slice(0, 3) };
-  }
-
-  return {
-    needsClarification: false,
-    spec: (parsed as { spec: VideoSpec }).spec,
-  };
-}
-
-export function decomposeTask(_spec: VideoSpec): PlannedAgent[] {
-  // For the hackathon scope, the pipeline is fixed: script -> voice -> visual.
-  const order = ["script-agent", "voice-agent", "visual-agent"];
-  const plan: PlannedAgent[] = [];
-  for (const id of order) {
-    const a = getAgent(id);
-    if (!a) continue;
-    plan.push({ id: a.id, name: a.name ?? a.id, fee_sats: a.fee_sats });
-  }
-  // Fall back to all agents if the canonical three are missing.
-  if (plan.length === 0) {
-    for (const a of getAgents()) {
-      plan.push({ id: a.id, name: a.name ?? a.id, fee_sats: a.fee_sats });
-    }
-  }
-  return plan;
-}
-
-export function priceJob(plan: PlannedAgent[]): { subtotal: number; margin: number; total: number } {
-  const subtotal = plan.reduce((sum, p) => sum + p.fee_sats, 0);
-  const margin = Math.ceil(subtotal * MAESTRO_MARGIN_PCT);
-  return { subtotal, margin, total: subtotal + margin };
-}
-
 export function newJobId(): string {
   return "job_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-async function callAgentEndpoint(agent: Agent, spec: VideoSpec, priorOutputs: Record<string, unknown>): Promise<unknown> {
+export function priceJob(plan: Extract<ExecutionPlan, { feasible: true }>): {
+  subtotal: number;
+  margin: number;
+  total: number;
+} {
+  const subtotal = plan.total_cost_sats;
+  const margin = Math.ceil(subtotal * MAESTRO_MARGIN_PCT);
+  return { subtotal, margin, total: subtotal + margin };
+}
+
+export type MissingInputs = {
+  missing_inputs: string[];
+  for_agent: string;
+};
+
+export function validateInputsForFirstStep(
+  plan: Extract<ExecutionPlan, { feasible: true }>,
+  consumerInputs: Record<string, unknown>
+): MissingInputs | null {
+  const firstStep = plan.steps[0];
+  if (!firstStep) return null;
+  const agent = getAgent(firstStep.agent_id);
+  if (!agent) return null;
+  const missing = Object.keys(agent.required_inputs).filter(
+    (key) => consumerInputs[key] === undefined
+  );
+  if (missing.length === 0) return null;
+  return { missing_inputs: missing, for_agent: agent.agent_id };
+}
+
+export async function planAndPriceJob(
+  request: string,
+  consumerInputs: Record<string, unknown>
+): Promise<{
+  plan: ExecutionPlan;
+  pricing?: { subtotal: number; margin: number; total: number };
+}> {
+  const plan = await planTask(request, getAgents(), consumerInputs);
+  if (!plan.feasible) return { plan };
+  return { plan, pricing: priceJob(plan) };
+}
+
+async function callAgentEndpoint(
+  agent: AgentManifest,
+  inputs: Record<string, unknown>
+): Promise<unknown> {
+  if (!agent.endpoint) {
+    return { stub: true, reason: "no endpoint configured", agent: agent.agent_id };
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
     const res = await fetch(agent.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ spec, priorOutputs }),
+      body: JSON.stringify({ inputs }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    if (!res.ok) throw new Error(`agent ${agent.id} returned ${res.status}`);
+    if (!res.ok) throw new Error(`agent ${agent.agent_id} returned ${res.status}`);
     return await res.json();
   } catch (err) {
-    // Hackathon stub: if the sub-agent isn't running, return a placeholder
-    // so the pipeline can still be demoed end-to-end.
     return {
       stub: true,
-      agent: agent.id,
-      specialty: agent.specialty,
+      agent: agent.agent_id,
+      capability: agent.capability,
       note: `sub-agent unreachable, returning stub output (${(err as Error).message})`,
     };
   }
+}
+
+function mergeOutputsIntoInputs(
+  step: PlannedStep,
+  priorOutputs: Record<string, unknown>
+): Record<string, unknown> {
+  // Replace any "<from:agent_id>" placeholders the planner left behind with
+  // actual prior outputs, when available. Anything else in inputs_for_agent
+  // is passed through as-is.
+  const merged: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(step.inputs_for_agent)) {
+    if (typeof value === "string" && value.startsWith("<from:")) {
+      if (priorOutputs[key] !== undefined) {
+        merged[key] = priorOutputs[key];
+      }
+    } else {
+      merged[key] = value;
+    }
+  }
+  // Always pass anything from priorOutputs that the agent might want.
+  for (const [key, value] of Object.entries(priorOutputs)) {
+    if (merged[key] === undefined) merged[key] = value;
+  }
+  return merged;
 }
 
 export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> {
@@ -175,29 +153,67 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
     return;
   }
 
+  // Emit the plan first so the dashboard can show "Maestro is choosing
+  // which agents to hire" before any payment fires.
+  yield { step: "planning", plan: job.plan };
+
   job.status = "running";
   saveJob(job);
 
-  for (const planned of job.plan) {
-    const agent = getAgent(planned.id);
+  const accumulatedOutputs: Record<string, unknown> = {};
+
+  for (const step of job.plan.steps) {
+    const agent = getAgent(step.agent_id);
     if (!agent) {
-      yield { step: "error", agent: planned.id, message: "agent not found in registry" };
+      yield {
+        step: "error",
+        agent: step.agent_id,
+        message: "agent not found in marketplace at execution time",
+      };
       job.status = "error";
-      job.error = `agent ${planned.id} not found`;
+      job.error = `agent ${step.agent_id} not found`;
       saveJob(job);
       return;
     }
 
-    yield { step: "hiring", agent: agent.id };
+    yield { step: "hiring", agent: agent.agent_id, capability: agent.capability };
 
-    const payment = await payInvoice(agent.id, agent.fee_sats);
-    yield { step: "working", agent: agent.id, paymentSent: payment.amount_sats };
+    const payment = await payAgent(
+      MAESTRO_AGENT_ID,
+      agent.agent_id,
+      step.fee_sats,
+      `${agent.capability} (job ${job.id})`
+    );
 
-    const output = await callAgentEndpoint(agent, job.spec, job.results);
-    job.results[agent.id] = output;
+    yield {
+      step: "working",
+      agent: agent.agent_id,
+      capability: agent.capability,
+      paymentSent: step.fee_sats,
+      output: payment.success ? undefined : { paymentError: payment.error },
+    };
+
+    const inputs = mergeOutputsIntoInputs(step, accumulatedOutputs);
+    const output = await callAgentEndpoint(agent, inputs);
+
+    if (output && typeof output === "object") {
+      // Hoist the agent's declared output fields into the shared bag so
+      // downstream steps can consume them by key.
+      for (const outKey of Object.keys(agent.outputs)) {
+        const v = (output as Record<string, unknown>)[outKey];
+        if (v !== undefined) accumulatedOutputs[outKey] = v;
+      }
+    }
+
+    job.results[agent.agent_id] = output;
     saveJob(job);
 
-    yield { step: "working", agent: agent.id, output };
+    yield {
+      step: "working",
+      agent: agent.agent_id,
+      capability: agent.capability,
+      output,
+    };
   }
 
   job.status = "complete";
@@ -205,3 +221,57 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
 
   yield { step: "complete", finalOutput: job.results };
 }
+
+// Maestro's own manifest. Surfaced at GET /api/agent/manifest.
+export function maestroManifest(): AgentManifest {
+  const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? "http://localhost:3000";
+  return {
+    agent_id: "maestro-v1",
+    agent_type: "orchestrator",
+    capability: "video_orchestration",
+    capability_tags: ["orchestrator", "marketplace", "video"],
+    description:
+      "Maestro is a general orchestrator. It plans which marketplace agents to hire for a given task and runs the pipeline. Today the marketplace contains video specialists, so video jobs work end-to-end.",
+    required_inputs: {
+      product_name: { type: "string", description: "Product name" },
+      product_description: {
+        type: "string",
+        description: "Short description of what the product does",
+      },
+      visual_context: {
+        type: "string",
+        description: "Aesthetic / brand cues to guide visuals",
+      },
+      target_audience: {
+        type: "string",
+        description: "Who this is for",
+      },
+    },
+    optional_inputs: {
+      style: { type: "string", description: "cinematic | playful | minimal" },
+      duration_seconds: { type: "number", description: "Target duration" },
+      voiceover_tone: { type: "string", description: "e.g. warm, energetic" },
+    },
+    context_gathering: { supported: false, sources: [] },
+    outputs: {
+      results: {
+        type: "object",
+        description: "Map of agent_id -> that agent's output",
+      },
+    },
+    pricing: {
+      base_sats: 0,
+      breakdown: { margin_pct: MAESTRO_MARGIN_PCT * 100 },
+    },
+    typical_completion_seconds: 30,
+    hires_agents_with_capabilities: [
+      "video_script_writing",
+      "voiceover_generation",
+      "video_visual_generation",
+    ],
+    marketplace_url: `${dashboardUrl.replace(/\/$/, "")}/api/marketplace`,
+  };
+}
+
+// Re-exported for the API layer; declared here to keep route imports tidy.
+export { createInvoice };

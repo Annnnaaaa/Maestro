@@ -1,55 +1,147 @@
-export interface Agent {
-  id: string;
-  endpoint: string;
-  fee_sats: number;
-  specialty: string;
-  name?: string;
-}
+import { AgentManifest, isManifest } from "./manifest-schema";
 
-const initialAgents: Agent[] = [
+// Placeholder manifests used until each sub-agent's real /api/agent/manifest
+// is reachable. Once the sub-agents are running, marketplace seed code below
+// fetches and overwrites these.
+const PLACEHOLDER_MANIFESTS: AgentManifest[] = [
   {
-    id: "script-agent",
+    agent_id: "script-agent",
+    agent_type: "specialist",
+    capability: "video_script_writing",
+    capability_tags: ["script", "copywriting", "narrative"],
+    description: "Writes video scripts from a product brief.",
+    required_inputs: {
+      product_name: { type: "string", description: "Product name" },
+      product_description: { type: "string", description: "What the product does" },
+    },
+    optional_inputs: {
+      target_audience: { type: "string", description: "Who the video is for" },
+      duration_seconds: { type: "number", description: "Target duration" },
+    },
+    context_gathering: { supported: false, sources: [] },
+    outputs: {
+      script: { type: "string", description: "Final spoken script" },
+      scenes: { type: "array", description: "Scene-by-scene breakdown" },
+    },
+    pricing: { base_sats: 15 },
+    typical_completion_seconds: 6,
     endpoint: "http://localhost:3001/api/agent/script",
-    fee_sats: 15,
-    specialty: "video script writing",
   },
   {
-    id: "voice-agent",
+    agent_id: "voice-agent",
+    agent_type: "specialist",
+    capability: "voiceover_generation",
+    capability_tags: ["voice", "tts", "audio"],
+    description: "Generates a voiceover audio track from a script.",
+    required_inputs: {
+      script: { type: "string", description: "Script to read aloud" },
+    },
+    optional_inputs: {
+      voiceover_tone: { type: "string", description: "e.g. warm, energetic" },
+    },
+    context_gathering: { supported: false, sources: [] },
+    outputs: {
+      audio_url: { type: "string", description: "URL to the generated audio" },
+    },
+    pricing: { base_sats: 8 },
+    typical_completion_seconds: 5,
     endpoint: "http://localhost:3002/api/agent/voice",
-    fee_sats: 8,
-    specialty: "voiceover generation",
   },
   {
-    id: "visual-agent",
+    agent_id: "visual-agent",
+    agent_type: "specialist",
+    capability: "video_visual_generation",
+    capability_tags: ["visual", "video", "render"],
+    description: "Renders the visual track of a product video.",
+    required_inputs: {
+      scenes: { type: "array", description: "Scene breakdown to render" },
+    },
+    optional_inputs: {
+      style: { type: "string", description: "cinematic | playful | minimal" },
+      visual_context: { type: "string", description: "Aesthetic guidance / brand cues" },
+    },
+    context_gathering: { supported: false, sources: [] },
+    outputs: {
+      video_url: { type: "string", description: "URL to the rendered video" },
+    },
+    pricing: { base_sats: 45 },
+    typical_completion_seconds: 12,
     endpoint: "http://localhost:3003/api/agent/visual",
-    fee_sats: 45,
-    specialty: "video visuals",
   },
 ];
 
-// In-memory store. Persists across requests within a single Node process.
-const g = globalThis as unknown as { __maestro_agents?: Map<string, Agent> };
-if (!g.__maestro_agents) {
-  g.__maestro_agents = new Map(initialAgents.map((a) => [a.id, a]));
-}
-const agents = g.__maestro_agents;
+const g = globalThis as typeof globalThis & {
+  __maestro_marketplace?: Map<string, AgentManifest>;
+  __maestro_marketplace_seeded?: boolean;
+};
 
-export function getAgents(): Agent[] {
-  return Array.from(agents.values());
+function store(): Map<string, AgentManifest> {
+  if (!g.__maestro_marketplace) {
+    g.__maestro_marketplace = new Map(
+      PLACEHOLDER_MANIFESTS.map((m) => [m.agent_id, m])
+    );
+  }
+  return g.__maestro_marketplace;
 }
 
-export function getAgent(id: string): Agent | undefined {
-  return agents.get(id);
+export function getAgents(): AgentManifest[] {
+  return Array.from(store().values());
 }
 
-export function addAgent(spec: Partial<Agent> & { id: string; endpoint: string }): Agent {
-  const agent: Agent = {
-    id: spec.id,
-    endpoint: spec.endpoint,
-    fee_sats: typeof spec.fee_sats === "number" ? spec.fee_sats : 10,
-    specialty: spec.specialty ?? "general",
-    name: spec.name,
-  };
-  agents.set(agent.id, agent);
-  return agent;
+export function getAgent(agent_id: string): AgentManifest | undefined {
+  return store().get(agent_id);
+}
+
+export function getAgentsByCapability(capability: string): AgentManifest[] {
+  return getAgents().filter(
+    (a) => a.capability === capability || a.capability_tags.includes(capability)
+  );
+}
+
+export function addAgent(manifest: AgentManifest): AgentManifest {
+  if (!isManifest(manifest)) {
+    throw new Error("addAgent: invalid AgentManifest payload");
+  }
+  store().set(manifest.agent_id, manifest);
+  return manifest;
+}
+
+// Tries to refresh each placeholder manifest from its endpoint's
+// /api/agent/manifest route. Failures are silent - placeholders stay in
+// place so the demo keeps working.
+export async function seedFromEndpoints(): Promise<void> {
+  if (g.__maestro_marketplace_seeded) return;
+  g.__maestro_marketplace_seeded = true;
+
+  const agents = getAgents();
+  await Promise.all(
+    agents.map(async (a) => {
+      if (!a.endpoint) return;
+      try {
+        const url = new URL(a.endpoint);
+        // /api/agent/<id> -> /api/agent/manifest on the same origin
+        const manifestUrl = `${url.protocol}//${url.host}/api/agent/manifest`;
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 1500);
+        const res = await fetch(manifestUrl, { signal: controller.signal });
+        clearTimeout(t);
+        if (!res.ok) return;
+        const fetched = (await res.json()) as AgentManifest;
+        if (isManifest(fetched)) {
+          fetched.endpoint = a.endpoint;
+          store().set(fetched.agent_id, fetched);
+        }
+      } catch {
+        // ignore - placeholder remains
+      }
+    })
+  );
+}
+
+export function logStartupSummary(): void {
+  const agents = getAgents();
+  const caps = agents.map((a) => a.capability);
+  console.log(
+    `Maestro started. Marketplace has ${agents.length} agents with capabilities: [${caps.join(", ")}]`
+  );
 }

@@ -25,7 +25,7 @@ export interface LegacyPaymentResult extends AgentPaymentResult {
 }
 
 const INITIAL_LEDGER: Readonly<Ledger> = {
-  foreman: 1000,
+  maestro: 1000,
   "script-agent": 0,
   "voice-agent": 0,
   "visual-agent": 0,
@@ -273,7 +273,7 @@ export function getLedgerSnapshot(): Ledger {
 }
 
 export async function payInvoice(agentId: string, amountSats: number): Promise<LegacyPaymentResult> {
-  const result = await payAgent("foreman", agentId, amountSats, `agent fee: ${agentId}`);
+  const result = await payAgent("maestro", agentId, amountSats, `agent fee: ${agentId}`);
   return {
     ...result,
     agent_id: agentId,
