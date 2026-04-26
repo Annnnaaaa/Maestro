@@ -12,8 +12,14 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
     maestro, agents, payments, log,
     consumerKind, videoReady, consumerPaid, payMaestro,
     incomingAgentRequest, setIncomingAgentRequest, startJob, resetForNextJob,
-    requiredTags, matchedAgentIds, capabilityToast, setCapabilityToast,
+    matchedAgentIds, capabilityToast, setCapabilityToast,
+    finalVideoUrl, syncMarketplace,
   } = useMaestro();
+
+  // Keep marketplace synced with backend.
+  useEffect(() => {
+    void syncMarketplace().catch(() => {});
+  }, [syncMarketplace]);
 
   // Auto-dismiss capability toast
   useEffect(() => {
@@ -97,6 +103,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             onPay={payMaestro}
             onNext={resetForNextJob}
             jobStatus={jobStatus}
+            videoUrl={finalVideoUrl}
           />
 
           <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated">
@@ -153,7 +160,6 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
         {planning && (
           <PlanningOverlay
             request={jobRequest || jobTitle}
-            requiredTags={requiredTags}
             matched={matchedAgentIds}
             agents={agents}
             maestroAction={maestroAction}
@@ -226,10 +232,9 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
 /* ────────────────────────────────────────────────────────────── */
 
 function PlanningOverlay({
-  request, requiredTags, matched, agents, maestroAction,
+  request, matched, agents, maestroAction,
 }: {
   request: string;
-  requiredTags: string[];
   matched: string[];
   agents: Agent[];
   maestroAction: string;
@@ -274,21 +279,6 @@ function PlanningOverlay({
             </motion.div>
           </div>
         </motion.div>
-
-        {/* Required tags */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground">REQUIRES:</span>
-          {requiredTags.map((t) => (
-            <motion.span
-              key={t}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="rounded-full border border-electric/50 bg-electric/10 px-2.5 py-0.5 font-mono text-[10px] text-electric"
-            >
-              {t}
-            </motion.span>
-          ))}
-        </div>
 
         {/* Marketplace mini-grid */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
@@ -513,8 +503,8 @@ function AgentCard({
 }
 
 function FinalOutput({
-  ready, paid, onPay, onNext, jobStatus,
-}: { ready: boolean; paid: boolean; onPay: () => void; onNext: () => void; jobStatus: string }) {
+  ready, paid, onPay, onNext, jobStatus, videoUrl,
+}: { ready: boolean; paid: boolean; onPay: () => void; onNext: () => void; jobStatus: string; videoUrl: string | null }) {
   return (
     <motion.div
       layout
@@ -543,7 +533,7 @@ function FinalOutput({
           >
             <div className="aspect-video overflow-hidden rounded-xl border border-electric/30 bg-black">
               <video
-                src="https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"
+                src={videoUrl ?? "https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"}
                 controls
                 autoPlay
                 muted
@@ -645,10 +635,26 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
     try {
       const base = (import.meta as any).env?.VITE_BACKEND_URL ?? (import.meta as any).env?.NEXT_PUBLIC_BACKEND_URL;
       if (base) {
+        const payload =
+          parsed.agent_id
+            ? parsed
+            : {
+                agent_id: String(parsed.id),
+                agent_type: parsed.agent_type === "ORCHESTRATOR" ? "orchestrator" : "specialist",
+                capability: String(parsed.capability),
+                capability_tags: parsed.capability_tags.map((t: any) => String(t)),
+                description: String(parsed.capability),
+                required_inputs: {},
+                optional_inputs: {},
+                context_gathering: { supported: false, sources: [] },
+                outputs: {},
+                pricing: { base_sats: Number(parsed.fee) },
+                typical_completion_seconds: 10,
+              };
         await fetch(`${base}/api/marketplace`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(parsed),
+          body: JSON.stringify(payload),
         }).catch(() => {});
       }
     } catch { /* noop */ }
