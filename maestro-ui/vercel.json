@@ -6,13 +6,15 @@
     }
   },
   "routes": [
-    { "handle": "filesystem" },
-    { "src": "^/assets/(.*)$", "dest": "/dist/client/assets/$1" },
+    {
+      "src": "^/assets/(.*)$",
+      "dest": "/api/index?__asset=$1"
+    },
     {
       "src": "^/(.*\\.(css|js|mjs|png|jpg|jpeg|webp|svg|ico|txt|json|map))$",
-      "dest": "/dist/client/$1"
+      "dest": "/api/index?__file=$1"
     },
-    { "src": "^/(.*)$", "dest": "/api/index" }
+    { "src": "^/(.*)$", "dest": "/api/index?__path=$1" }
   ]
 }
 

@@ -57,7 +57,15 @@ async function maybeServeStatic(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") return false;
 
   const url = new URL(req.url, "http://local");
-  const pathname = decodeURIComponent(url.pathname);
+  // Vercel routes rewrite `/assets/*` to `/api/index?__asset=...` etc.
+  const routedPath =
+    url.searchParams.get("__asset") ??
+    url.searchParams.get("__file") ??
+    url.searchParams.get("__path");
+
+  const pathname = routedPath
+    ? `/${decodeURIComponent(routedPath).replace(/^\/+/, "")}`
+    : decodeURIComponent(url.pathname);
 
   // Prevent path traversal; only serve plain paths
   if (pathname.includes("..")) return false;
@@ -102,9 +110,13 @@ export default async function handler(req, res) {
 
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
-  const url = `${proto}://${host}${req.url}`;
+  const incoming = new URL(req.url, `${proto}://${host}`);
+  const originalPath = incoming.searchParams.get("__path");
+  const requestUrl = originalPath
+    ? `${proto}://${host}/${originalPath.replace(/^\/+/, "")}`
+    : `${proto}://${host}${req.url}`;
 
-  const request = new Request(url, {
+  const request = new Request(requestUrl, {
     method: req.method,
     headers: toWebHeaders(req.headers),
     body: req.method === "GET" || req.method === "HEAD" ? undefined : req,
