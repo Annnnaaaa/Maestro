@@ -14,7 +14,7 @@ handles those job types too with no code changes here.
 ```bash
 npm install
 cp .env.example .env.local
-# edit .env.local: ANTHROPIC_API_KEY (required), NWC_CONNECTION_STRING (or USE_STUB_LIGHTNING=true)
+# edit .env.local: OPENAI_API_KEY (required), NWC_CONNECTION_STRING (or USE_STUB_LIGHTNING=true)
 npm run dev
 ```
 
@@ -28,7 +28,8 @@ Maestro started. Marketplace has 3 agents with capabilities: [video_script_writi
 
 | Var | Purpose |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Required. Used by `lib/llm.ts`. |
+| `OPENAI_API_KEY` | Required. Used by `lib/llm.ts` (planner LLM). |
+| `MAESTRO_OPENAI_MODEL` | Optional. Defaults to `gpt-4o-mini`. |
 | `NWC_CONNECTION_STRING` | Nostr Wallet Connect URL for the shared Alby Hub wallet. |
 | `USE_STUB_LIGHTNING` | Set `true` to skip the real wallet entirely and run on the in-memory ledger. |
 | `NEXT_PUBLIC_DASHBOARD_URL` | URL of the demo dashboard, displayed on `/`. |
@@ -43,7 +44,7 @@ Submitting a task:
 1. **`POST /api/maestro/job`** with `{ request, inputs? }`.
 2. Maestro calls `planTask()` ([`lib/planner.ts`](lib/planner.ts)). For known
    categories it uses a template ([`lib/templates.ts`](lib/templates.ts));
-   otherwise it asks Claude to compose a plan from the marketplace's current
+   otherwise it asks the LLM to compose a plan from the marketplace's current
    capabilities.
 3. If no agent can supply a needed capability: returns
    `{ status: "no_capability_match", reason }`.

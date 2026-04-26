@@ -1,34 +1,29 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-let _client: Anthropic | null = null;
+let _client: OpenAI | null = null;
 
-function client(): Anthropic {
+function client(): OpenAI {
   if (_client) return _client;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "ANTHROPIC_API_KEY is not set. Add it to .env.local before calling the LLM."
+      "OPENAI_API_KEY is not set. Add it to .env.local before calling the LLM."
     );
   }
-  _client = new Anthropic({ apiKey });
+  _client = new OpenAI({ apiKey });
   return _client;
 }
 
-export async function askClaude(
-  systemPrompt: string,
-  userPrompt: string
-): Promise<string> {
-  const resp = await client().messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+export async function askLLM(systemPrompt: string, userPrompt: string): Promise<string> {
+  const model = process.env.MAESTRO_OPENAI_MODEL ?? "gpt-4o-mini";
+  const resp = await client().chat.completions.create({
+    model,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.2,
   });
 
-  const text = resp.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
-    .map((block) => block.text)
-    .join("");
-
-  return text.trim();
+  return (resp.choices[0]?.message?.content ?? "").trim();
 }

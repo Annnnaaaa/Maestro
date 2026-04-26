@@ -5,6 +5,32 @@ import { AgentManifest, isManifest } from "./manifest-schema";
 // fetches and overwrites these.
 const PLACEHOLDER_MANIFESTS: AgentManifest[] = [
   {
+    agent_id: "json2video-agent",
+    agent_type: "specialist",
+    capability: "product_video_generation_json2video",
+    capability_tags: ["video", "json2video", "render", "product"],
+    description: "Generates a complete product video directly using the JSON2Video API.",
+    required_inputs: {
+      product_name: { type: "string", description: "Product name" },
+      product_description: { type: "string", description: "What the product does" },
+      target_audience: { type: "string", description: "Who this is for" },
+      visual_context: { type: "string", description: "Aesthetic / brand cues" },
+    },
+    optional_inputs: {
+      style: { type: "string", description: "cinematic | playful | minimal" },
+      duration_seconds: { type: "number", description: "Target duration" },
+      voiceover_tone: { type: "string", description: "e.g. warm, energetic" },
+    },
+    context_gathering: { supported: false, sources: [] },
+    outputs: {
+      video_url: { type: "string", description: "URL to the rendered video" },
+      project: { type: "string", description: "JSON2Video project id (debug)" },
+    },
+    pricing: { base_sats: 79 },
+    typical_completion_seconds: 45,
+    endpoint: "http://localhost:3004/api/agent/json2video",
+  },
+  {
     agent_id: "script-agent",
     agent_type: "specialist",
     capability: "video_script_writing",

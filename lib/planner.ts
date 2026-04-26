@@ -1,4 +1,4 @@
-import { askClaude } from "./llm";
+import { askLLM } from "./llm";
 import { AgentManifest } from "./manifest-schema";
 import { findTemplate } from "./templates";
 
@@ -157,7 +157,7 @@ export async function planTask(
 
   let raw: string;
   try {
-    raw = await askClaude(PLANNER_SYSTEM_PROMPT, userPrompt);
+    raw = await askLLM(PLANNER_SYSTEM_PROMPT, userPrompt);
   } catch (err) {
     return {
       feasible: false,

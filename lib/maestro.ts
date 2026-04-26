@@ -95,7 +95,8 @@ export async function planAndPriceJob(
 
 async function callAgentEndpoint(
   agent: AgentManifest,
-  inputs: Record<string, unknown>
+  inputs: Record<string, unknown>,
+  payment_hash?: string
 ): Promise<unknown> {
   if (!agent.endpoint) {
     return { stub: true, reason: "no endpoint configured", agent: agent.agent_id };
@@ -106,11 +107,23 @@ async function callAgentEndpoint(
     const res = await fetch(agent.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inputs }),
+      // Most specialist agents require a payment_hash. For hackathon velocity,
+      // Maestro sends a flattened payload plus a nested `inputs` copy for
+      // forwards/backwards compatibility across agents.
+      body: JSON.stringify({
+        ...(payment_hash ? { payment_hash } : {}),
+        ...inputs,
+        inputs,
+      }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    if (!res.ok) throw new Error(`agent ${agent.agent_id} returned ${res.status}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `agent ${agent.agent_id} returned ${res.status}${text ? `: ${text}` : ""}`
+      );
+    }
     return await res.json();
   } catch (err) {
     return {
@@ -194,7 +207,15 @@ export async function* executeJob(jobId: string): AsyncGenerator<ProgressEvent> 
     };
 
     const inputs = mergeOutputsIntoInputs(step, accumulatedOutputs);
-    const output = await callAgentEndpoint(agent, inputs);
+    const paymentHashForAgent =
+      (payment.payment_hash && payment.payment_hash.trim().length > 0
+        ? payment.payment_hash
+        : job.invoice?.payment_hash) ?? undefined;
+    const output = await callAgentEndpoint(
+      agent,
+      inputs,
+      paymentHashForAgent
+    );
 
     if (output && typeof output === "object") {
       // Hoist the agent's declared output fields into the shared bag so
@@ -231,7 +252,7 @@ export function maestroManifest(): AgentManifest {
     capability: "video_orchestration",
     capability_tags: ["orchestrator", "marketplace", "video"],
     description:
-      "Maestro is a general orchestrator. It plans which marketplace agents to hire for a given task and runs the pipeline. Today the marketplace contains video specialists, so video jobs work end-to-end.",
+      "Maestro is a general orchestrator. It plans which marketplace agents to hire for a given task and runs the pipeline. For product videos, it prefers direct JSON2Video generation when available.",
     required_inputs: {
       product_name: { type: "string", description: "Product name" },
       product_description: {
@@ -265,9 +286,7 @@ export function maestroManifest(): AgentManifest {
     },
     typical_completion_seconds: 30,
     hires_agents_with_capabilities: [
-      "video_script_writing",
-      "voiceover_generation",
-      "video_visual_generation",
+      "product_video_generation_json2video",
     ],
     marketplace_url: `${dashboardUrl.replace(/\/$/, "")}/api/marketplace`,
   };

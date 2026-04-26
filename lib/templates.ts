@@ -21,11 +21,9 @@ export const TEMPLATES: Template[] = [
   {
     key: "product_video",
     description:
-      "End-to-end product video: script -> voiceover -> visuals.",
+      "End-to-end product video generated directly via JSON2Video.",
     capabilities: [
-      "video_script_writing",
-      "voiceover_generation",
-      "video_visual_generation",
+      "product_video_generation_json2video",
     ],
     keywords: [
       "product video",

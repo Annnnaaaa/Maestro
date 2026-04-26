@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:all": "concurrently -k -n maestro,script,voice,visual,json2video -c blue,green,magenta,cyan,yellow \"npm run dev\" \"npm --prefix agents/script-agent run dev\" \"npm --prefix agents/voice-agent run dev\" \"npm --prefix agents/visual-agent run dev\" \"npm --prefix agents/json2video-agent run dev\"",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint"
@@ -12,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.30.1",
     "@getalby/sdk": "^7.0.0",
     "next": "14.2.15",
+    "openai": "^4.73.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsx": "^4.21.0",
@@ -21,6 +23,7 @@
     "@types/node": "^20.12.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "concurrently": "^9.2.1",
     "typescript": "^5.4.5"
   }
 }
