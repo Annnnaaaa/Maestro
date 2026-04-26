@@ -42,6 +42,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
     setCapabilityToast,
     pricing,
     finalVideoUrl,
+    jobProductName,
   } = useMaestro();
 
   // Auto-dismiss capability toast
@@ -126,6 +127,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             jobStatus={jobStatus}
             pricing={pricing}
             videoUrl={finalVideoUrl}
+            title={jobProductName ?? jobTitle ?? "Deliverable"}
           />
 
           <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated">
@@ -624,6 +626,7 @@ function FinalOutput({
   jobStatus,
   pricing,
   videoUrl,
+  title,
 }: {
   ready: boolean;
   paid: boolean;
@@ -632,6 +635,7 @@ function FinalOutput({
   jobStatus: string;
   pricing: { subtotal: number; margin: number; total: number } | null;
   videoUrl: string | null;
+  title: string;
 }) {
   const spent = pricing?.subtotal ?? 0;
   const margin = pricing?.margin ?? 0;
@@ -694,7 +698,7 @@ function FinalOutput({
                 <div className="font-mono text-[10px] tracking-wider text-muted-foreground">
                   DELIVERABLE
                 </div>
-                <div className="text-lg font-semibold">Ember Mug - Cinematic Cut</div>
+                <div className="text-lg font-semibold">{title}</div>
                 <div className="mt-1 font-mono text-[10px] text-muted-foreground">
                   15s · 9:16 · MP4 · 4.2 MB
                 </div>

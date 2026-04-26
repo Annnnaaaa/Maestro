@@ -33,13 +33,15 @@ function buildPrompt(inputs: Inputs): string {
 
   // Keep this prompt compact; Magic Hour max is 2000 chars.
   return [
-    `Create a short product promo video for ${name}.`,
-    desc ? `Product: ${desc}` : "",
+    `Create a high-converting short product ad video for "${name}".`,
+    desc ? `Product description: ${desc}` : "",
     `Target audience: ${audience}.`,
     ctx ? `Brand / visual context: ${ctx}` : "",
-    `Style: ${style}. Tone: ${tone}.`,
+    `Creative direction: ${style}. Voice/tone: ${tone}.`,
     script ? `Spoken script (use as copy guidance): ${script}` : "",
-    "Cinematic camera moves, crisp lighting, clean typography, no watermarks, no logos unless provided.",
+    "Structure (fast-paced): 1) Hook (0–2s) 2) Problem (2–4s) 3) Solution/benefit (4–8s) 4) CTA (8–10s).",
+    "Visuals: premium product close-ups, lifestyle usage, clean studio lighting, shallow depth of field, subtle motion graphics, readable on mobile.",
+    "Avoid: talking heads, watermarks, brand logos you invent, misspelled text, cluttered backgrounds.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -53,7 +55,7 @@ async function createTextToVideoJob(apiKey: string, inputs: Inputs): Promise<{ i
   const endSecondsRaw =
     typeof inputs.duration_seconds === "number" && Number.isFinite(inputs.duration_seconds)
       ? inputs.duration_seconds
-      : 6;
+      : 10;
   const end_seconds = clamp(endSecondsRaw, 1.5, 15);
 
   // Some Magic Hour plans restrict higher resolutions.

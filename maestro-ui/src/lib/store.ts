@@ -35,6 +35,7 @@ interface MaestroState {
   pricing: { subtotal: number; margin: number; total: number } | null;
   invoice: { invoice: string; payment_hash: string } | null;
   finalVideoUrl: string | null;
+  jobProductName: string | null;
 
   initFromBackend: () => void;
   startJob: (title: string, kind: ConsumerKind, request: string, inputs: Record<string, unknown>) => Promise<void>;
@@ -102,6 +103,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
   pricing: null,
   invoice: null,
   finalVideoUrl: null,
+  jobProductName: null,
 
   initFromBackend: () => {
     // Fire-and-forget hydration; UI stays usable even if backend is offline.
@@ -139,6 +141,10 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       pricing: null,
       invoice: null,
       finalVideoUrl: null,
+      jobProductName:
+        typeof inputs.product_name === "string" && inputs.product_name.trim().length > 0
+          ? inputs.product_name.trim()
+          : null,
       agents: s.agents.map((a) => ({ ...a, status: "idle" as const })),
     }));
 
