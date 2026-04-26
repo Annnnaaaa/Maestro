@@ -5,6 +5,7 @@ import { TopBar } from "@/components/TopBar";
 import { ConsumerChat } from "@/components/ConsumerChat";
 import { OperationsDashboard, AddAgentModal } from "@/components/OperationsDashboard";
 import { Landing } from "@/components/Landing";
+import { McpSetup } from "@/components/McpSetup";
 import { useMaestro } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
@@ -52,6 +53,8 @@ function Index() {
               <Landing />
             ) : view === "chat" ? (
               <ConsumerChat />
+            ) : view === "mcp" ? (
+              <McpSetup />
             ) : (
               <OperationsDashboard onAddAgent={() => setAddOpen(true)} />
             )}

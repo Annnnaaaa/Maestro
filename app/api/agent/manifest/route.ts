@@ -9,5 +9,12 @@ export async function OPTIONS() {
 }
 
 export async function GET() {
-  return withCors(maestroManifest());
+  try {
+    return withCors(maestroManifest());
+  } catch (e) {
+    return withCors(
+      { error: "manifest_failed", message: (e as Error).message },
+      { status: 500 }
+    );
+  }
 }

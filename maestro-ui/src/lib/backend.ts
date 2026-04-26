@@ -92,6 +92,17 @@ export async function submitJob(
   return (await res.json()) as MaestroJobResponse;
 }
 
+export async function intake(request: string): Promise<{ extracted_inputs: Record<string, unknown> }> {
+  const res = await fetch(`${backendBase()}/api/maestro/intake`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ request }),
+  });
+  if (!res.ok) throw new Error(`intake: ${res.status}`);
+  const data = (await res.json()) as { extracted_inputs?: Record<string, unknown> };
+  return { extracted_inputs: data.extracted_inputs ?? {} };
+}
+
 export async function markJobPaid(jobId: string): Promise<unknown> {
   const res = await fetch(
     `${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/mark-paid`,

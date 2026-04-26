@@ -23,6 +23,9 @@ export default function Home() {
             <li>
               <code>visual-agent-v1</code> — <code>video_visual_generation</code>
             </li>
+            <li>
+              <code>magichour-video-agent</code> — <code>product_video_generation</code>
+            </li>
           </ul>
         </div>
 
@@ -65,6 +68,10 @@ export default function Home() {
           <code>POST /api/marketplace</code> — register an agent (full <code>AgentManifest</code>)
         </li>
         <li>
+          <code>POST /api/maestro/intake</code> — optional LLM parsing to extract structured inputs
+          from a free-form prompt
+        </li>
+        <li>
           <code>POST /api/maestro/job</code> — create a job (plan + invoice)
         </li>
         <li>
@@ -105,6 +112,44 @@ curl -s -X POST http://localhost:3000/api/maestro/job/<jobId>/mark-paid
 
 # 3) Execute (SSE stream)
 curl -N -s -X POST http://localhost:3000/api/maestro/job/<jobId>/execute`}</pre>
+
+      <h2 style={{ marginTop: 20 }}>MCP server</h2>
+      <p style={{ marginTop: 8, color: "#374151", maxWidth: 920 }}>
+        Maestro includes an optional <strong>MCP (Model Context Protocol)</strong> server so MCP-compatible
+        clients (Cursor / Claude MCP, etc.) can call Maestro as tools. The MCP server runs over{" "}
+        <strong>stdio</strong> (spawned as a local process).
+      </p>
+      <ul style={{ lineHeight: 1.7, maxWidth: 920 }}>
+        <li>
+          <strong>Published docs</strong>:{" "}
+          <a href="https://maestro-amber-omega.vercel.app/" target="_blank" rel="noreferrer">
+            maestro-amber-omega.vercel.app
+          </a>
+        </li>
+        <li>
+          <strong>Install</strong>: <code>cd mcp-server &amp;&amp; npm install &amp;&amp; npm run build</code>
+        </li>
+        <li>
+          <strong>Configure</strong>: set <code>MAESTRO_API_URL</code> in the MCP client to point at your
+          Maestro deployment (default <code>http://localhost:3000</code>).
+        </li>
+      </ul>
+
+      <h2 style={{ marginTop: 20 }}>Optional: MCP context enrichment</h2>
+      <p style={{ marginTop: 8, color: "#374151", maxWidth: 920 }}>
+        If a job is missing required inputs, Maestro can optionally call an external MCP-backed context
+        service to fill missing fields before asking the user.
+      </p>
+      <ul style={{ lineHeight: 1.7, maxWidth: 920 }}>
+        <li>
+          <strong>Enable</strong>: set <code>MAESTRO_MCP_CONTEXT_URL</code> to an HTTP endpoint that accepts{" "}
+          <code>{`{ request, missing_inputs, consumer_inputs }`}</code> and returns{" "}
+          <code>{`{ filled_inputs }`}</code>.
+        </li>
+        <li>
+          <strong>Timeout</strong>: <code>MAESTRO_MCP_TIMEOUT_MS</code> (default 2500ms)
+        </li>
+      </ul>
 
       <p style={{ marginTop: 16, color: "#374151", maxWidth: 900 }}>
         Note: For hackathon/demo resiliency, if a specialist agent is unreachable, Maestro returns a

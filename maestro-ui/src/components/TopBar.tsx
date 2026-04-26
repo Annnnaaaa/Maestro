@@ -1,6 +1,6 @@
 import { useMaestro } from "@/lib/store";
 import { AnimatedCounter } from "./AnimatedCounter";
-import { Plus, Zap, Menu, X } from "lucide-react";
+import { Plus, Menu, X, Plug } from "lucide-react";
 import { useState } from "react";
 import maestroIcon from "@/assets/maestro-icon.png";
 
@@ -12,6 +12,7 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
     { id: "landing" as const, label: "Overview" },
     { id: "chat" as const, label: "Consumer Chat" },
     { id: "ops" as const, label: "Operations" },
+    { id: "mcp" as const, label: "MCP Setup" },
   ];
 
   return (
@@ -112,7 +113,7 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-surface/95 backdrop-blur-xl">
           <div className="px-4 py-3 space-y-3">
-            <nav className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background p-1">
+            <nav className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1">
               {tabs.map((t) => (
                 <button
                   key={t.id}

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Agent, PaymentEvent, SpecField } from "./types";
 import { fetchMaestro, fetchMarketplace, markJobPaid, streamExecute, submitJob } from "./backend";
 
-type View = "landing" | "chat" | "ops";
+type View = "landing" | "chat" | "ops" | "mcp";
 type ConsumerKind = "human" | "agent";
 type JobStatus = "idle" | "planning" | "in_progress" | "complete";
 
@@ -90,7 +90,14 @@ export const useMaestro = create<MaestroState>((set, get) => ({
   setView: (v) => set({ view: v }),
 
   spec: [],
-  addSpec: (f) => set((s) => (s.spec.some((x) => x.key === f.key) ? s : { spec: [...s.spec, f] })),
+  addSpec: (f) =>
+    set((s) => {
+      const idx = s.spec.findIndex((x) => x.key === f.key);
+      if (idx === -1) return { spec: [...s.spec, f] };
+      const next = s.spec.slice();
+      next[idx] = f;
+      return { spec: next };
+    }),
   resetSpec: () => set({ spec: [] }),
   specToInputs: () => {
     const inputs: Record<string, unknown> = {};
@@ -174,15 +181,36 @@ export const useMaestro = create<MaestroState>((set, get) => ({
     const agentIds = steps
       .map((step) => (isRecord(step) ? String(step.agent_id ?? "") : ""))
       .filter(Boolean);
+    const requiredCaps = steps
+      .map((step) => (isRecord(step) ? String(step.capability ?? "") : ""))
+      .filter(Boolean);
+
+    // Keep the "Maestro is matching capabilities…" overlay visible briefly
+    // (it was previously driven by mock timing; now we drive it off real plan data).
     set({
-      maestroAction: "Awaiting payment…",
-      jobStatus: "in_progress",
       jobId: res.jobId,
       pricing: res.pricing,
       invoice: res.invoice,
-      matchedAgentIds: agentIds,
+      requiredTags: requiredCaps,
+      matchedAgentIds: [],
+      maestroAction: "Scanning marketplace for capabilities…",
+      jobStatus: "planning",
     });
-    get().pushLog(`Planned ${steps.length} step(s). Total: ${res.pricing.total} sats`, "info");
+
+    setTimeout(() => {
+      set({
+        matchedAgentIds: agentIds,
+        maestroAction: `Matched ${agentIds.length} specialist${agentIds.length === 1 ? "" : "s"}`,
+      });
+    }, 900);
+
+    setTimeout(() => {
+      set({
+        maestroAction: "Awaiting payment…",
+        jobStatus: "in_progress",
+      });
+      get().pushLog(`Planned ${steps.length} step(s). Total: ${res.pricing.total} sats`, "info");
+    }, 1700);
   },
 
   agents: [],

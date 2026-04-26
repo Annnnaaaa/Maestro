@@ -3,13 +3,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMaestro } from "@/lib/store";
 import type { ChatMessage, SpecField } from "@/lib/types";
 import { Send, Sparkles, Zap } from "lucide-react";
+import { intake, submitJob } from "@/lib/backend";
 
 type Question = {
-  key: "request" | "product_name" | "product_description";
+  key: "request" | string;
   prompt: string;
   placeholder: string;
   suggest: string;
 };
+
+function upsertSpec(existing: SpecField[], f: SpecField): SpecField[] {
+  const idx = existing.findIndex((x) => x.key === f.key);
+  if (idx === -1) return [...existing, f];
+  const copy = existing.slice();
+  copy[idx] = f;
+  return copy;
+}
+
+function labelForKey(key: string): string {
+  if (key === "product_name") return "Product";
+  if (key === "product_description") return "Description";
+  if (key === "target_audience") return "Audience";
+  if (key === "visual_context") return "Visual context";
+  if (key === "style") return "Style";
+  if (key === "duration_seconds") return "Duration";
+  if (key === "voiceover_tone") return "Voice tone";
+  return key;
+}
 
 export function ConsumerChat() {
   const { spec, addSpec, resetSpec, startJob, setView, pricing } = useMaestro();
@@ -26,29 +46,28 @@ export function ConsumerChat() {
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const questions: Question[] = useMemo(
-    () => [
+  // Dynamic flow:
+  // - step 0: ask for request
+  // - then ask only for backend-reported missing inputs
+  const [missingKeys, setMissingKeys] = useState<string[]>([]);
+  const questions: Question[] = useMemo(() => {
+    const base: Question[] = [
       {
         key: "request",
-        prompt: "What video do you want?",
-        placeholder: "e.g. Create a product video for my new mug",
-        suggest: "Create a short product video for my coffee mug.",
+        prompt: "What do you want Maestro to create?",
+        placeholder: "e.g. Create a product video for Maestro",
+        suggest: "Create a product video for Maestro.",
       },
-      {
-        key: "product_name",
-        prompt: "What’s the product name?",
-        placeholder: "e.g. Ember Mug",
-        suggest: "Ember Mug",
-      },
-      {
-        key: "product_description",
-        prompt: "One sentence: what does it do?",
-        placeholder: "e.g. A self-heating mug that keeps coffee hot for hours",
-        suggest: "A self-heating smart mug that keeps coffee at 60°C for hours.",
-      },
-    ],
-    [],
-  );
+    ];
+    return base.concat(
+      missingKeys.map((k) => ({
+        key: k,
+        prompt: `Quick question: ${labelForKey(k)}?`,
+        placeholder: `Enter ${labelForKey(k).toLowerCase()}…`,
+        suggest: "",
+      })),
+    );
+  }, [missingKeys]);
 
   useEffect(() => {
     resetSpec();
@@ -73,30 +92,84 @@ export function ConsumerChat() {
     setTimeout(async () => {
       if (q.key === "request") {
         addSpec({ key: "request", label: "Request", value: userText });
-      }
-      if (q.key === "product_name") {
-        addSpec({ key: "product_name", label: "Product", value: userText });
-      }
-      if (q.key === "product_description") {
-        addSpec({ key: "product_description", label: "Description", value: userText });
-      }
+        // Ask LLM intake to extract fields already present.
+        let extracted: Record<string, unknown> = {};
+        try {
+          const res = await intake(userText);
+          extracted = res.extracted_inputs ?? {};
+        } catch {
+          extracted = {};
+        }
+        for (const [k, v] of Object.entries(extracted)) {
+          if (typeof v === "string" && v.trim().length > 0) {
+            addSpec({ key: k, label: labelForKey(k), value: v.trim() });
+          } else if (typeof v === "number" && Number.isFinite(v)) {
+            addSpec({ key: k, label: labelForKey(k), value: String(v) });
+          }
+        }
 
-      const next = questions[step + 1];
-      if (next) {
-        setMessages((m) => [
-          ...m,
-          { id: crypto.randomUUID(), role: "maestro", content: next.prompt },
-        ]);
+        // Call backend once to learn what's missing.
+        const inputs: Record<string, unknown> = {};
+        const allFields: SpecField[] = [
+          ...spec,
+          { key: "request", label: "Request", value: userText },
+          ...Object.entries(extracted).map(([k, v]) => ({
+            key: k,
+            label: labelForKey(k),
+            value: typeof v === "string" ? v : String(v),
+          })),
+        ];
+        for (const f of allFields) {
+          if (f.key === "request") continue;
+          inputs[f.key] = f.value;
+        }
+
+        const jobCheck = await submitJob(userText, inputs);
+        if (jobCheck.status === "missing_inputs") {
+          setMissingKeys(jobCheck.missing_inputs);
+          const first = jobCheck.missing_inputs[0];
+          setMessages((m) => [
+            ...m,
+            {
+              id: crypto.randomUUID(),
+              role: "maestro",
+              content: `I just need ${jobCheck.missing_inputs.length} more detail(s).`,
+            },
+            ...(first
+              ? [
+                  {
+                    id: crypto.randomUUID(),
+                    role: "maestro" as const,
+                    content: `Quick question: ${labelForKey(first)}?`,
+                  },
+                ]
+              : []),
+          ]);
+          setThinking(false);
+          setStep(1);
+          return;
+        }
+        if (jobCheck.status === "ready") {
+          // Use canonical store flow to keep overlay/pricing consistent
+          await startJob(
+            `Job: ${String((inputs as any).product_name ?? "request")}`,
+            "human",
+            userText,
+            inputs,
+          );
+          setThinking(false);
+          setStep(questions.length);
+          return;
+        }
         setThinking(false);
-        setStep((s) => s + 1);
+        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "maestro", content: "I can’t match that request to available capabilities right now." }]);
         return;
       }
 
-      const requestText =
-        (q.key === "request"
-          ? userText
-          : (spec.find((f) => f.key === "request")?.value as string | undefined)) ??
-        "Create a product video.";
+      // Answering a missing input key
+      addSpec({ key: q.key, label: labelForKey(q.key), value: userText });
+
+      const requestText = (spec.find((f) => f.key === "request")?.value as string | undefined) ?? "";
       const inputs: Record<string, unknown> = {};
       const allFields: SpecField[] = [...spec, { key: q.key, label: q.key, value: userText }];
       for (const f of allFields) {
@@ -115,13 +188,13 @@ export function ConsumerChat() {
 
       try {
         await startJob(
-          `Product Video: ${String(inputs.product_name ?? "product")}`,
+          `Job: ${String((inputs as any).product_name ?? "request")}`,
           "human",
           requestText,
           inputs,
         );
         setThinking(false);
-        setStep((s) => s + 1);
+        setStep(questions.length);
       } catch {
         setThinking(false);
         setMessages((m) => [

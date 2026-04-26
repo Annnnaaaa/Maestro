@@ -75,7 +75,11 @@ export function Landing() {
   const glowBg = useMotionTemplate`radial-gradient(600px circle at ${glowX} ${glowY}, color-mix(in oklab, var(--lightning) 35%, transparent), transparent 60%)`;
 
   return (
-    <div ref={containerRef} className="relative h-full overflow-y-auto overscroll-contain">
+    <div
+      ref={containerRef}
+      className="relative h-full overflow-y-auto overscroll-contain"
+      style={{ position: "relative" }}
+    >
       {/* Scroll progress */}
       <motion.div
         style={{ width: progressBar }}
@@ -189,6 +193,12 @@ export function Landing() {
                 className="inline-flex items-center gap-2 rounded-lg border border-electric/40 bg-electric/10 px-5 py-3 font-mono text-sm font-bold text-electric transition-colors hover:bg-electric/20"
               >
                 <Network className="h-4 w-4" /> See live operations
+              </button>
+              <button
+                onClick={() => setView("mcp")}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface/80 px-5 py-3 font-mono text-sm font-bold text-foreground transition-colors hover:bg-surface-elevated"
+              >
+                <Code2 className="h-4 w-4" /> MCP setup
               </button>
             </motion.div>
 
