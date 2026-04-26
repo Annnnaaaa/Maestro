@@ -13,13 +13,14 @@ const PLACEHOLDER_MANIFESTS: AgentManifest[] = [
     required_inputs: {
       product_name: { type: "string", description: "Product name" },
       product_description: { type: "string", description: "What the product does" },
-      target_audience: { type: "string", description: "Who this is for" },
-      visual_context: { type: "string", description: "Aesthetic / brand cues" },
     },
     optional_inputs: {
+      target_audience: { type: "string", description: "Who this is for" },
+      visual_context: { type: "string", description: "Aesthetic / brand cues" },
       style: { type: "string", description: "cinematic | playful | minimal" },
       duration_seconds: { type: "number", description: "Target duration" },
       voiceover_tone: { type: "string", description: "e.g. warm, energetic" },
+      script: { type: "string", description: "Optional spoken script to guide the video" },
     },
     context_gathering: { supported: false, sources: [] },
     outputs: {

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TopBar } from "@/components/TopBar";
 import { ConsumerChat } from "@/components/ConsumerChat";
 import { OperationsDashboard, AddAgentModal } from "@/components/OperationsDashboard";
@@ -20,7 +20,12 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const view = useMaestro((s) => s.view);
+  const init = useMaestro((s) => s.initFromBackend);
   const [addOpen, setAddOpen] = useState(false);
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

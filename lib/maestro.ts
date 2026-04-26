@@ -83,7 +83,9 @@ export function priceJob(plan: Extract<ExecutionPlan, { feasible: true }>): {
   total: number;
 } {
   const subtotal = plan.total_cost_sats;
-  const margin = Math.ceil(subtotal * MAESTRO_MARGIN_PCT);
+  // Keep demo pricing sane for micropayments.
+  // If the whole job is 1 sat, don't add a 1-sat margin.
+  const margin = subtotal <= 1 ? 0 : Math.ceil(subtotal * MAESTRO_MARGIN_PCT);
   return { subtotal, margin, total: subtotal + margin };
 }
 
@@ -129,7 +131,11 @@ async function callAgentEndpoint(
   }
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    // Agent calls can legitimately take a while (e.g. video renders).
+    // Use the agent's declared typical duration as a baseline, with guardrails.
+    const typicalMs = Math.max(5_000, (agent.typical_completion_seconds ?? 30) * 1000);
+    const timeoutMs = Math.min(10 * 60_000, Math.max(15_000, typicalMs + 90_000));
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const res = await fetch(agent.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

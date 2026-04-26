@@ -13,6 +13,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
     consumerKind, videoReady, consumerPaid, payMaestro,
     incomingAgentRequest, setIncomingAgentRequest, startJob, resetForNextJob,
     requiredTags, matchedAgentIds, capabilityToast, setCapabilityToast,
+    pricing, finalVideoUrl,
   } = useMaestro();
 
   // Auto-dismiss capability toast
@@ -97,6 +98,8 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             onPay={payMaestro}
             onNext={resetForNextJob}
             jobStatus={jobStatus}
+            pricing={pricing}
+            videoUrl={finalVideoUrl}
           />
 
           <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated">
@@ -182,7 +185,19 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
                 onClick={() => {
                   setIncomingAgentRequest(false);
                   resetForNextJob();
-                  setTimeout(() => startJob("Explainer Video for MarketingBot", "agent", "Need a 30s explainer video for our SaaS launch."), 300);
+                  setTimeout(
+                    () =>
+                      startJob(
+                        "Explainer Video for MarketingBot",
+                        "agent",
+                        "Need a 30s explainer video for our SaaS launch.",
+                        {
+                          product_name: "SaaS Launch",
+                          product_description: "A new SaaS product launching soon.",
+                        }
+                      ),
+                    300
+                  );
                 }}
                 className="flex-1 rounded-lg bg-agent/20 py-2 text-xs font-semibold text-agent hover:bg-agent/30 border border-agent/40"
               >
@@ -514,7 +529,21 @@ function AgentCard({
 
 function FinalOutput({
   ready, paid, onPay, onNext, jobStatus,
-}: { ready: boolean; paid: boolean; onPay: () => void; onNext: () => void; jobStatus: string }) {
+  pricing,
+  videoUrl,
+}: {
+  ready: boolean;
+  paid: boolean;
+  onPay: () => void;
+  onNext: () => void;
+  jobStatus: string;
+  pricing: { subtotal: number; margin: number; total: number } | null;
+  videoUrl: string | null;
+}) {
+  const spent = pricing?.subtotal ?? 0;
+  const margin = pricing?.margin ?? 0;
+  const total = pricing?.total ?? 0;
+  const canPayNow = !paid && total > 0 && !ready && jobStatus === "in_progress";
   return (
     <motion.div
       layout
@@ -528,11 +557,27 @@ function FinalOutput({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-4 flex h-40 items-center justify-center rounded-xl border border-dashed border-border bg-background/40"
+            className="mt-4 flex h-40 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-background/40 px-4 text-center"
           >
-            <p className="font-mono text-xs text-muted-foreground">
-              {jobStatus === "in_progress" || jobStatus === "planning" ? "Rendering deliverable…" : "No output yet."}
-            </p>
+            {canPayNow ? (
+              <>
+                <p className="font-mono text-xs text-muted-foreground">
+                  Awaiting payment to start rendering.
+                </p>
+                <button
+                  onClick={onPay}
+                  className="flex items-center justify-center gap-2 rounded-xl gradient-lightning px-5 py-2.5 font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01]"
+                >
+                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro {total} sats
+                </button>
+              </>
+            ) : (
+              <p className="font-mono text-xs text-muted-foreground">
+                {jobStatus === "in_progress" || jobStatus === "planning"
+                  ? "Working…"
+                  : "No output yet."}
+              </p>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -543,7 +588,7 @@ function FinalOutput({
           >
             <div className="aspect-video overflow-hidden rounded-xl border border-electric/30 bg-black">
               <video
-                src="https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"
+                src={videoUrl ?? "https://cdn.coverr.co/videos/coverr-coffee-being-poured-into-a-cup-2649/1080p.mp4"}
                 controls
                 autoPlay
                 muted
@@ -558,9 +603,9 @@ function FinalOutput({
                 <div className="mt-1 font-mono text-[10px] text-muted-foreground">15s · 9:16 · MP4 · 4.2 MB</div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <Tile k="SPENT" v="68" />
-                  <Tile k="MARGIN" v="22" />
-                  <Tile k="TOTAL" v="90" />
+                  <Tile k="SPENT" v={String(spent)} />
+                  <Tile k="MARGIN" v={String(margin)} />
+                  <Tile k="TOTAL" v={String(total)} />
                 </div>
               </div>
               {!paid ? (
@@ -568,7 +613,7 @@ function FinalOutput({
                   onClick={onPay}
                   className="mt-4 flex items-center justify-center gap-2 rounded-xl gradient-lightning px-5 py-3 font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01]"
                 >
-                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro 90 sats
+                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro {total} sats
                 </button>
               ) : (
                 <button

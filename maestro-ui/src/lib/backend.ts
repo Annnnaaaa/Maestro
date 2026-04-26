@@ -77,12 +77,16 @@ export async function submitJob(request: string, inputs: Record<string, unknown>
   return (await res.json()) as MaestroJobResponse;
 }
 
-export async function streamExecute(jobId: string, onEvent: (e: ProgressEvent) => void): Promise<void> {
-  const res = await fetch(`${backendBase()}/api/maestro/execute`, {
+export async function markJobPaid(jobId: string): Promise<unknown> {
+  const res = await fetch(`${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/mark-paid`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jobId }),
   });
+  if (!res.ok) throw new Error(`mark-paid: ${res.status}`);
+  return await res.json();
+}
+
+export async function streamExecute(jobId: string, onEvent: (e: ProgressEvent) => void): Promise<void> {
+  const res = await fetch(`${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/execute`, { method: "POST" });
   if (!res.ok || !res.body) throw new Error(`execute: ${res.status}`);
 
   const reader = res.body.getReader();

@@ -14,6 +14,7 @@ type Inputs = {
   style?: string;
   duration_seconds?: number;
   voiceover_tone?: string;
+  script?: string;
   task_description?: string;
 };
 
@@ -28,6 +29,7 @@ function buildPrompt(inputs: Inputs): string {
   const ctx = inputs.visual_context?.trim() || "";
   const style = inputs.style?.trim() || "cinematic";
   const tone = inputs.voiceover_tone?.trim() || "confident";
+  const script = inputs.script?.trim() || "";
 
   // Keep this prompt compact; Magic Hour max is 2000 chars.
   return [
@@ -36,6 +38,7 @@ function buildPrompt(inputs: Inputs): string {
     `Target audience: ${audience}.`,
     ctx ? `Brand / visual context: ${ctx}` : "",
     `Style: ${style}. Tone: ${tone}.`,
+    script ? `Spoken script (use as copy guidance): ${script}` : "",
     "Cinematic camera moves, crisp lighting, clean typography, no watermarks, no logos unless provided.",
   ]
     .filter(Boolean)
@@ -122,6 +125,13 @@ export async function POST(req: Request) {
   const inputs: Inputs = (body as any).inputs ?? (body as any) ?? {};
   const payment_hash = inputs.payment_hash?.trim() || "stub_missing_payment_hash";
 
+  if (!inputs.product_name || !inputs.product_description) {
+    return withCors(
+      { error: "Missing required inputs: product_name, product_description" },
+      { status: 400 }
+    );
+  }
+
   const ok = await verifyPaymentHash(payment_hash);
   if (!ok) return withCors({ error: "payment verification failed" }, { status: 402 });
 
@@ -132,7 +142,7 @@ export async function POST(req: Request) {
         video_url: "http://localhost:3005/demo-video.mp4",
         project_id: "stub_no_api_key",
         status: "complete",
-        agent_id: "magichour-video-agent-v1",
+        agent_id: "magichour-video-agent",
         payment_hash,
         warning: "MAGIC_HOUR_API_KEY not configured; returning fallback demo URL",
       },
@@ -168,7 +178,7 @@ export async function POST(req: Request) {
           video_url: url,
           project_id: id,
           status: details.status,
-          agent_id: "magichour-video-agent-v1",
+          agent_id: "magichour-video-agent",
           payment_hash,
         });
       }
@@ -190,14 +200,14 @@ export async function POST(req: Request) {
         error: "magichour render timeout",
         project_id: id,
         status: "timeout",
-        agent_id: "magichour-video-agent-v1",
+        agent_id: "magichour-video-agent",
         payment_hash,
       },
       { status: 504 }
     );
   } catch (err) {
     return withCors(
-      { error: (err as Error).message, agent_id: "magichour-video-agent-v1", payment_hash },
+      { error: (err as Error).message, agent_id: "magichour-video-agent", payment_hash },
       { status: 502 }
     );
   }

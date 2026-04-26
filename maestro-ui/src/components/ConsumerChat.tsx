@@ -1,12 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMaestro } from "@/lib/store";
-import { CHAT_SCRIPT } from "@/lib/maestro-mock";
 import type { ChatMessage } from "@/lib/types";
 import { Send, Sparkles, Zap } from "lucide-react";
 
+type Question = {
+  key: "request" | "product_name" | "product_description";
+  prompt: string;
+  placeholder: string;
+  suggest: string;
+};
+
 export function ConsumerChat() {
-  const { spec, addSpec, resetSpec, startJob, setView } = useMaestro();
+  const { spec, addSpec, resetSpec, startJob, setView, pricing } = useMaestro();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: "intro", role: "maestro", content: "Hey, I'm Maestro. Tell me what you need built and I'll hire the right agents to make it happen." },
   ]);
@@ -14,6 +20,30 @@ export function ConsumerChat() {
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const questions: Question[] = useMemo(
+    () => [
+      {
+        key: "request",
+        prompt: "What video do you want?",
+        placeholder: "e.g. Create a product video for my new mug",
+        suggest: "Create a short product video for my coffee mug.",
+      },
+      {
+        key: "product_name",
+        prompt: "What’s the product name?",
+        placeholder: "e.g. Ember Mug",
+        suggest: "Ember Mug",
+      },
+      {
+        key: "product_description",
+        prompt: "One sentence: what does it do?",
+        placeholder: "e.g. A self-heating mug that keeps coffee hot for hours",
+        suggest: "A self-heating smart mug that keeps coffee at 60°C for hours.",
+      },
+    ],
+    []
+  );
 
   useEffect(() => {
     resetSpec();
@@ -25,28 +55,72 @@ export function ConsumerChat() {
   }, [messages, thinking]);
 
   const send = () => {
-    if (!input.trim() && step > 0) return;
-    const userText = step === 0 ? (input.trim() || "I need a product video for my coffee mug.") : input.trim();
+    const q = questions[step];
+    if (!q) return;
+    const userText = input.trim() || q.suggest;
     if (!userText) return;
 
     setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content: userText }]);
     setInput("");
     setThinking(true);
 
-    setTimeout(() => {
-      const next = CHAT_SCRIPT[step];
-      if (next) {
-        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "maestro", content: next.maestro }]);
-        if (next.spec) addSpec(next.spec);
+    setTimeout(async () => {
+      if (q.key === "product_name") {
+        addSpec({ key: "product_name", label: "Product", value: userText });
       }
-      setThinking(false);
-      setStep((s) => s + 1);
-    }, 700);
+      if (q.key === "product_description") {
+        addSpec({ key: "product_description", label: "Description", value: userText });
+      }
+
+      const next = questions[step + 1];
+      if (next) {
+        setMessages((m) => [...m, { id: crypto.randomUUID(), role: "maestro", content: next.prompt }]);
+        setThinking(false);
+        setStep((s) => s + 1);
+        return;
+      }
+
+      // We have enough inputs. Kick off planning/pricing via backend.
+      const req = (spec.find((f) => f.key === "request")?.value as string | undefined) ?? "";
+      const requestText = q.key === "request" ? userText : req || "Create a product video.";
+      if (q.key === "request") {
+        addSpec({ key: "request", label: "Request", value: requestText });
+      }
+
+      const inputs: Record<string, unknown> = {};
+      for (const f of [...spec, { key: q.key, label: q.key, value: userText } as any]) {
+        if (f.key === "request") continue;
+        inputs[f.key] = f.value;
+      }
+
+      setMessages((m) => [
+        ...m,
+        { id: crypto.randomUUID(), role: "maestro", content: "Thanks. I’ll plan the job and quote the exact price." },
+      ]);
+
+      try {
+        await startJob(
+          `Product Video: ${String(inputs.product_name ?? "product")}`,
+          "human",
+          requestText,
+          inputs
+        );
+        setThinking(false);
+        setStep((s) => s + 1);
+      } catch {
+        setThinking(false);
+        setMessages((m) => [
+          ...m,
+          { id: crypto.randomUUID(), role: "maestro", content: "I hit an error creating the job. Check that the backend is running." },
+        ]);
+      }
+    }, 550);
   };
 
-  const ready = step > CHAT_SCRIPT.length;
-  const currentPrompt = CHAT_SCRIPT[step]?.userPrompt ?? "Tell Maestro what you need…";
-  const suggested = step > 0 && step <= CHAT_SCRIPT.length ? CHAT_SCRIPT[step - 1].userReply : "I need a product video for my coffee mug.";
+  const ready = step >= questions.length;
+  const currentPrompt = questions[step]?.placeholder ?? "Tell Maestro what you need…";
+  const suggested = questions[Math.max(0, step)]?.suggest ?? "";
+  const quoteSats = pricing?.total ?? (ready ? 0 : Math.min(spec.length * 1, 3));
 
   return (
     <div className="grid-bg min-h-[calc(100svh-65px)]">
@@ -109,13 +183,12 @@ export function ConsumerChat() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={() => {
-                  startJob("Coffee Mug Product Video", "human");
                   setView("ops");
                 }}
                 className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl gradient-lightning px-6 py-3.5 text-base font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01] active:scale-[0.99]"
               >
                 <Zap className="h-5 w-5" fill="currentColor" />
-                Hire Maestro — 90 sats
+                Hire Maestro — {quoteSats} sats
                 <motion.span
                   className="absolute inset-0 -translate-x-full bg-white/20"
                   animate={{ x: ["-100%", "200%"] }}
@@ -156,7 +229,7 @@ export function ConsumerChat() {
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-mono text-xs tracking-wider text-muted-foreground">JOB SPEC</h3>
             <span className="font-mono text-[10px] text-muted-foreground">
-              {spec.length}/{CHAT_SCRIPT.length} fields
+              {spec.length}/3 fields
             </span>
           </div>
           {spec.length === 0 ? (
@@ -191,10 +264,10 @@ export function ConsumerChat() {
               <Zap className="h-3 w-3 text-lightning" fill="currentColor" />
             </div>
             <div className="font-mono text-2xl font-bold text-lightning">
-              {ready ? "90" : Math.min(spec.length * 18, 90)} <span className="text-xs text-muted-foreground">sats</span>
+              {quoteSats} <span className="text-xs text-muted-foreground">sats</span>
             </div>
             <div className="mt-1 font-mono text-[10px] text-muted-foreground">
-              ≈ ${((ready ? 90 : Math.min(spec.length * 18, 90)) * 0.0006).toFixed(3)} USD
+              ≈ ${(quoteSats * 0.0006).toFixed(3)} USD
             </div>
           </div>
         </div>
