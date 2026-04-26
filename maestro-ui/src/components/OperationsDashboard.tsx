@@ -14,6 +14,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
     incomingAgentRequest, setIncomingAgentRequest, startJob, resetForNextJob,
     matchedAgentIds, capabilityToast, setCapabilityToast,
     finalVideoUrl, syncMarketplace,
+    pricing,
   } = useMaestro();
 
   // Keep marketplace synced with backend.
@@ -104,6 +105,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             onNext={resetForNextJob}
             jobStatus={jobStatus}
             videoUrl={finalVideoUrl}
+            pricing={pricing}
           />
 
           <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated">
@@ -503,8 +505,16 @@ function AgentCard({
 }
 
 function FinalOutput({
-  ready, paid, onPay, onNext, jobStatus, videoUrl,
-}: { ready: boolean; paid: boolean; onPay: () => void; onNext: () => void; jobStatus: string; videoUrl: string | null }) {
+  ready, paid, onPay, onNext, jobStatus, videoUrl, pricing,
+}: {
+  ready: boolean;
+  paid: boolean;
+  onPay: () => void;
+  onNext: () => void;
+  jobStatus: string;
+  videoUrl: string | null;
+  pricing: { subtotal: number; margin: number; total: number } | null;
+}) {
   return (
     <motion.div
       layout
@@ -548,9 +558,9 @@ function FinalOutput({
                 <div className="mt-1 font-mono text-[10px] text-muted-foreground">15s · 9:16 · MP4 · 4.2 MB</div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <Tile k="SPENT" v="68" />
-                  <Tile k="MARGIN" v="22" />
-                  <Tile k="TOTAL" v="90" />
+                  <Tile k="SPENT" v={String(pricing?.subtotal ?? 0)} />
+                  <Tile k="MARGIN" v={String(pricing?.margin ?? 0)} />
+                  <Tile k="TOTAL" v={String(pricing?.total ?? 0)} />
                 </div>
               </div>
               {!paid ? (
@@ -558,7 +568,7 @@ function FinalOutput({
                   onClick={onPay}
                   className="mt-4 flex items-center justify-center gap-2 rounded-xl gradient-lightning px-5 py-3 font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01]"
                 >
-                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro 90 sats
+                  <Zap className="h-4 w-4" fill="currentColor" /> Pay Maestro {pricing?.total ?? 0} sats
                 </button>
               ) : (
                 <button

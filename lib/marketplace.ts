@@ -26,7 +26,7 @@ const PLACEHOLDER_MANIFESTS: AgentManifest[] = [
       video_url: { type: "string", description: "URL to the rendered video" },
       project: { type: "string", description: "JSON2Video project id (debug)" },
     },
-    pricing: { base_sats: 79 },
+    pricing: { base_sats: 13 },
     typical_completion_seconds: 45,
     endpoint: "http://localhost:3004/api/agent/json2video",
   },

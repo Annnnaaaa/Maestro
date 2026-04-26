@@ -30,6 +30,7 @@ interface MaestroState {
   maestroAction: string;
   matchedAgentIds: string[];
   finalVideoUrl: string | null;
+  pricing: { subtotal: number; margin: number; total: number } | null;
   startJob: (title: string, kind: ConsumerKind, request?: string) => Promise<void>;
   syncMarketplace: () => Promise<void>;
 
@@ -101,6 +102,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
   maestroAction: "Standing by",
   matchedAgentIds: [],
   finalVideoUrl: null,
+  pricing: null,
 
   syncMarketplace: async () => {
     const [maestro, agents] = await Promise.all([fetchMaestro(), fetchMarketplace()]);
@@ -121,6 +123,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       maestroAction: "Submitting job to Maestro…",
       videoReady: false,
       finalVideoUrl: null,
+      pricing: null,
       consumerPaid: false,
       matchedAgentIds: [],
       log: [
@@ -157,6 +160,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
     }
 
     set({ maestroAction: "Plan ready. Executing…", jobStatus: "in_progress" });
+    set({ pricing: jobResp.pricing });
 
     get().pushPayment({
       from: kind === "human" ? "consumer" : "agent-consumer",
@@ -307,6 +311,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       jobStatus: "idle",
       videoReady: false,
       finalVideoUrl: null,
+      pricing: null,
       consumerPaid: false,
       maestroAction: "Standing by",
       payments: [],
