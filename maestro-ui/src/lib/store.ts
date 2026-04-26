@@ -100,7 +100,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
       consumerPaid: false,
       requiredTags: tags,
       matchedAgentIds: [],
-      log: [{ id: crypto.randomUUID(), text: `Job #${String(s.jobNumber).padStart(3, "0")} received — ${title}`, ts: Date.now(), kind: "info" }],
+      log: [{ id: crypto.randomUUID(), text: `Job #${String(s.jobNumber).padStart(3, "0")} received - ${title}`, ts: Date.now(), kind: "info" }],
       payments: [],
       agents: s.agents.map((a) => ({ ...a, status: "idle" as const })),
     }));

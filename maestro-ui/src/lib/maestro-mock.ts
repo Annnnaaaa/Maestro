@@ -114,7 +114,7 @@ export interface ChatStep {
 
 export const CHAT_SCRIPT: ChatStep[] = [
   {
-    maestro: "Got it — a product video for your coffee mug. What's the mug called and what's the vibe?",
+    maestro: "Got it - a product video for your coffee mug. What's the mug called and what's the vibe?",
     userPrompt: "Tell Maestro about your product…",
     userReply: "It's called Ember Mug. Cozy, warm, morning-ritual vibe.",
     spec: { key: "product_name", label: "Product", value: "Ember Mug" },
@@ -132,13 +132,13 @@ export const CHAT_SCRIPT: ChatStep[] = [
     spec: { key: "duration", label: "Duration", value: "15s" },
   },
   {
-    maestro: "Voiceover — male, female, or none?",
+    maestro: "Voiceover - male, female, or none?",
     userPrompt: "Voiceover preference…",
     userReply: "Warm female voice.",
     spec: { key: "voiceover", label: "Voiceover", value: "Warm female" },
   },
   {
-    maestro: "Perfect. Aspect ratio — 9:16 for social or 16:9 for web?",
+    maestro: "Perfect. Aspect ratio - 9:16 for social or 16:9 for web?",
     userPrompt: "Aspect ratio…",
     userReply: "9:16 vertical for Instagram.",
     spec: { key: "aspect", label: "Aspect", value: "9:16 vertical" },

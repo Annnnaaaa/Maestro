@@ -115,7 +115,7 @@ export function ConsumerChat() {
                 className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl gradient-lightning px-6 py-3.5 text-base font-bold text-primary-foreground shadow-lightning transition-transform hover:scale-[1.01] active:scale-[0.99]"
               >
                 <Zap className="h-5 w-5" fill="currentColor" />
-                Hire Maestro — 90 sats
+                Hire Maestro - 90 sats
                 <motion.span
                   className="absolute inset-0 -translate-x-full bg-white/20"
                   animate={{ x: ["-100%", "200%"] }}

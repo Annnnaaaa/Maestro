@@ -46,7 +46,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
           </div>
         </motion.div>
 
-        {/* MARKETPLACE — full-width grid of agent cards */}
+        {/* MARKETPLACE - full-width grid of agent cards */}
         <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -186,7 +186,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
                 }}
                 className="flex-1 rounded-lg bg-agent/20 py-2 text-xs font-semibold text-agent hover:bg-agent/30 border border-agent/40"
               >
-                Yes — auto-handle
+                Yes - auto-handle
               </button>
               <button
                 onClick={() => setIncomingAgentRequest(false)}
@@ -554,7 +554,7 @@ function FinalOutput({
             <div className="flex flex-col justify-between rounded-xl border border-border bg-background/50 p-4">
               <div>
                 <div className="font-mono text-[10px] tracking-wider text-muted-foreground">DELIVERABLE</div>
-                <div className="text-lg font-semibold">Ember Mug — Cinematic Cut</div>
+                <div className="text-lg font-semibold">Ember Mug - Cinematic Cut</div>
                 <div className="mt-1 font-mono text-[10px] text-muted-foreground">15s · 9:16 · MP4 · 4.2 MB</div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
@@ -575,7 +575,7 @@ function FinalOutput({
                   onClick={onNext}
                   className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-success/50 bg-success/10 px-5 py-3 font-semibold text-success"
                 >
-                  <CheckCircle2 className="h-4 w-4" /> Paid — start next job
+                  <CheckCircle2 className="h-4 w-4" /> Paid - start next job
                 </button>
               )}
             </div>
@@ -670,7 +670,7 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
 
     // Capability detection toast
     const headlineTag = parsed.capability_tags[0];
-    setCapabilityToast(`+ ${headlineTag} — Maestro can now route ${headlineTag} jobs to ${parsed.name}.`);
+    setCapabilityToast(`+ ${headlineTag} - Maestro can now route ${headlineTag} jobs to ${parsed.name}.`);
     onClose();
   };
 

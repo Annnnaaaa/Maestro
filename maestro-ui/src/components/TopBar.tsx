@@ -73,7 +73,7 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
           </div>
         </div>
 
-        {/* Tablet — compact stats only */}
+        {/* Tablet - compact stats only */}
         <div className="hidden md:flex lg:hidden items-center gap-2">
           <span className="rounded-md border border-border bg-surface/80 px-2 py-1 font-mono text-[10px] text-muted-foreground">
             <span className="text-lightning font-bold"><AnimatedCounter value={gmv} /></span> sats

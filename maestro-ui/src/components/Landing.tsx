@@ -60,7 +60,7 @@ export function Landing() {
       {/* Scroll progress */}
       <motion.div
         style={{ width: progressBar }}
-        className="fixed left-0 top-[57px] z-30 h-[2px] gradient-lightning shadow-lightning"
+        className="fixed left-0 top-0 z-30 h-[2px] gradient-lightning shadow-lightning"
       />
 
       {/* HERO */}
@@ -109,7 +109,7 @@ export function Landing() {
 
             <motion.p variants={fadeUp} className="max-w-2xl text-base text-muted-foreground sm:text-lg md:text-xl">
               Maestro is an orchestrator that takes any request, finds the right specialists in an open
-              marketplace, and pays them in sats over the Lightning Network — autonomously, in seconds.
+              marketplace, and pays them in sats over the Lightning Network - autonomously, in seconds.
             </motion.p>
 
             <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">
@@ -154,7 +154,7 @@ export function Landing() {
           className="text-xl leading-snug text-foreground sm:text-2xl md:text-3xl"
         >
           A general-purpose AI orchestrator that turns any prompt into a coordinated team of specialist
-          agents, paying them instantly in <span className="text-lightning">sats over Lightning</span> —
+          agents, paying them instantly in <span className="text-lightning">sats over Lightning</span> -
           no contracts, no platforms, no middlemen.
         </motion.p>
       </Section>
@@ -166,7 +166,7 @@ export function Landing() {
             <h3 className="mb-3 font-mono text-xs tracking-wider text-destructive">THE PAIN</h3>
             <ul className="space-y-3 text-muted-foreground">
               {[
-                "Today's AI agents are isolated — each app rebuilds the same capabilities from scratch.",
+                "Today's AI agents are isolated - each app rebuilds the same capabilities from scratch.",
                 "There's no native way for one agent to hire another and settle the bill.",
                 "Credit cards, API keys, and Stripe accounts don't fit machine-speed, machine-scale commerce.",
                 "Specialist models exist everywhere, but consumers can't reach them through one interface.",
@@ -183,7 +183,7 @@ export function Landing() {
             <p className="text-muted-foreground">
               If agents could discover and pay each other in milliseconds, the AI economy would self-assemble.
               The missing piece is a money layer that's <span className="text-foreground">programmable, instant,
-              and as small as a fraction of a cent.</span> Lightning is that layer — it's just been waiting
+              and as small as a fraction of a cent.</span> Lightning is that layer - it's just been waiting
               for an orchestrator.
             </p>
           </Card>
@@ -196,7 +196,7 @@ export function Landing() {
           {[
             {
               t: "Consumers",
-              d: "Anyone who wants a result — a video, a translation, a research brief — without learning ten tools.",
+              d: "Anyone who wants a result - a video, a translation, a research brief - without learning ten tools.",
               c: "text-electric",
               tag: "humans",
             },
@@ -239,12 +239,12 @@ export function Landing() {
             {
               i: Wallet,
               t: "Lightning escrow",
-              d: "The consumer pays Maestro 90 sats up front. Maestro splits payouts to specialists in real time — keeping a small margin.",
+              d: "The consumer pays Maestro 90 sats up front. Maestro splits payouts to specialists in real time - keeping a small margin.",
             },
             {
               i: Network,
               t: "Open marketplace",
-              d: "Any agent can join by POSTing a manifest. Maestro instantly recognizes the new capability — no redeploy.",
+              d: "Any agent can join by POSTing a manifest. Maestro instantly recognizes the new capability - no redeploy.",
             },
             {
               i: Bot,
@@ -277,7 +277,7 @@ export function Landing() {
             <div className="font-mono text-[10px] tracking-wider text-muted-foreground">EXISTING TOOLS</div>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
               {[
-                "One model, one task — locked to a single vendor",
+                "One model, one task - locked to a single vendor",
                 "Credit-card billing, monthly subscriptions",
                 "Closed marketplaces with approval gates",
                 "No way for agents to transact with each other",
@@ -294,7 +294,7 @@ export function Landing() {
               {[
                 "Composes any number of specialists per job",
                 "Per-task micropayments, settled in sats",
-                "Permissionless — drop a manifest, get hired",
+                "Permissionless - drop a manifest, get hired",
                 "Native agent-to-agent commerce out of the box",
               ].map((t) => (
                 <li key={t} className="flex gap-2 text-foreground">
@@ -315,9 +315,9 @@ export function Landing() {
               {[
                 ["Frontend", "React 19 + TanStack Start, Tailwind v4 design tokens, Framer Motion for kinetic UI."],
                 ["State", "Zustand store drives the orchestration state machine: planning → matching → executing → complete."],
-                ["Marketplace API", "REST endpoints (GET/POST /api/marketplace) backed by Lovable Cloud — agents register via manifest JSON."],
-                ["Payments", "Lightning Network (LND/Phoenix-compatible) — 90-sat escrow, fan-out payouts, settled sub-second."],
-                ["Capability matching", "Tag-based intersection between job requirements and agent.capability_tags — extensible to embeddings."],
+                ["Marketplace API", "REST endpoints (GET/POST /api/marketplace) backed by Lovable Cloud - agents register via manifest JSON."],
+                ["Payments", "Lightning Network (LND/Phoenix-compatible) - 90-sat escrow, fan-out payouts, settled sub-second."],
+                ["Capability matching", "Tag-based intersection between job requirements and agent.capability_tags - extensible to embeddings."],
               ].map(([k, v], i) => (
                 <li key={k} className="flex gap-4">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background font-mono text-[11px] text-electric">
@@ -356,7 +356,7 @@ export function Landing() {
       <Section index="06" tag="RESULTS & IMPACT" title="What we shipped" icon={Trophy}>
         <div className="grid gap-4 md:grid-cols-4">
           {[
-            ["90", "sats", "per full video job — end-to-end"],
+            ["90", "sats", "per full video job - end-to-end"],
             ["<15s", "", "from request → final deliverable"],
             ["4", "agents", "auto-coordinated per job"],
             ["0", "logins", "for downstream agents to transact"],
@@ -379,7 +379,7 @@ export function Landing() {
         <motion.div variants={fadeUp} className="mt-8 rounded-xl border border-lightning/30 bg-lightning/5 p-6">
           <h3 className="font-mono text-xs tracking-wider text-lightning">VALUE DELIVERED</h3>
           <p className="mt-3 text-foreground">
-            Maestro proves that an AI economy doesn't need to be built — it can <span className="text-lightning">emerge</span>.
+            Maestro proves that an AI economy doesn't need to be built - it can <span className="text-lightning">emerge</span>.
             With one orchestrator and Lightning rails, specialist models become composable services, consumers
             get one front door for everything, and agents themselves become first-class economic actors. The
             same demo flow works whether the customer is a human typing in chat or another agent calling an API.
@@ -483,21 +483,21 @@ function Card({ children, glow }: { children: React.ReactNode; glow?: "lightning
 
 function FloatingOrbs() {
   const orbs = [
-    { x: "8%", y: "10%", d: 3.4, c: "lightning", label: "VIDEO", delay: 0 },
-    { x: "82%", y: "18%", d: 4.2, c: "electric", label: "VOICE", delay: 0.4 },
-    { x: "70%", y: "78%", d: 3.8, c: "agent", label: "RESEARCH", delay: 0.8 },
-    { x: "12%", y: "72%", d: 4.6, c: "electric", label: "SCRIPT", delay: 1.2 },
+    { x: "10%", y: "14%", d: 3.6, c: "lightning", delay: 0 },
+    { x: "86%", y: "22%", d: 4.4, c: "electric", delay: 0.4 },
+    { x: "76%", y: "78%", d: 4.1, c: "agent", delay: 0.8 },
+    { x: "14%", y: "74%", d: 4.8, c: "electric", delay: 1.2 },
   ];
   return (
     <div className="pointer-events-none absolute inset-0 hidden lg:block">
       {orbs.map((o) => (
         <motion.div
-          key={o.label}
+          key={`${o.x}_${o.y}_${o.delay}`}
           className="absolute"
           style={{ left: o.x, top: o.y }}
           initial={{ opacity: 0, scale: 0.6 }}
           animate={{
-            opacity: 1,
+            opacity: 0.75,
             scale: 1,
             y: [0, -14, 0],
           }}
@@ -508,16 +508,15 @@ function FloatingOrbs() {
           }}
         >
           <div
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] tracking-wider backdrop-blur ${
+            className={`h-14 w-14 rounded-full blur-[1px] ${
               o.c === "lightning"
-                ? "border-lightning/40 bg-lightning/10 text-lightning"
+                ? "bg-lightning/20 shadow-lightning"
                 : o.c === "electric"
-                  ? "border-electric/40 bg-electric/10 text-electric"
-                  : "border-agent/40 bg-agent/10 text-agent"
+                  ? "bg-electric/20 shadow-electric"
+                  : "bg-agent/20"
             }`}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            {o.label}
+            <div className="h-full w-full rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.35),transparent_60%)]" />
           </div>
         </motion.div>
       ))}
