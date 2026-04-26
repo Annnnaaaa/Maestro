@@ -61,7 +61,9 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
           />
           <Stat label="JOBS" value={<AnimatedCounter value={jobsCompleted} />} />
           <div className="flex items-center gap-2 rounded-lg border border-border bg-surface/80 px-3 py-1.5">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground">AGENTS</span>
+            <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+              AGENTS
+            </span>
             <span className="font-mono text-sm font-bold text-electric">{agents.length}</span>
             <button
               onClick={onAddAgent}
@@ -73,10 +75,13 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
           </div>
         </div>
 
-        {/* Tablet — compact stats only */}
+        {/* Tablet - compact stats only */}
         <div className="hidden md:flex lg:hidden items-center gap-2">
           <span className="rounded-md border border-border bg-surface/80 px-2 py-1 font-mono text-[10px] text-muted-foreground">
-            <span className="text-lightning font-bold"><AnimatedCounter value={gmv} /></span> sats
+            <span className="text-lightning font-bold">
+              <AnimatedCounter value={gmv} />
+            </span>{" "}
+            sats
           </span>
           <button
             onClick={onAddAgent}
@@ -110,9 +115,7 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
                     setMobileOpen(false);
                   }}
                   className={`rounded-md px-2 py-2 text-xs font-medium transition-all ${
-                    view === t.id
-                      ? "bg-surface-elevated text-foreground"
-                      : "text-muted-foreground"
+                    view === t.id ? "bg-surface-elevated text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   {t.label}
@@ -120,9 +123,20 @@ export function TopBar({ onAddAgent }: { onAddAgent: () => void }) {
               ))}
             </nav>
             <div className="grid grid-cols-3 gap-2">
-              <MobileStat label="GMV" value={<><AnimatedCounter value={gmv} /><span className="text-lightning"> sats</span></>} />
+              <MobileStat
+                label="GMV"
+                value={
+                  <>
+                    <AnimatedCounter value={gmv} />
+                    <span className="text-lightning"> sats</span>
+                  </>
+                }
+              />
               <MobileStat label="JOBS" value={<AnimatedCounter value={jobsCompleted} />} />
-              <MobileStat label="AGENTS" value={<span className="text-electric">{agents.length}</span>} />
+              <MobileStat
+                label="AGENTS"
+                value={<span className="text-electric">{agents.length}</span>}
+              />
             </div>
             <button
               onClick={() => {

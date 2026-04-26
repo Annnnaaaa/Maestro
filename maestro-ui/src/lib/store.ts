@@ -81,8 +81,7 @@ export const useMaestro = create<MaestroState>((set, get) => ({
   setView: (v) => set({ view: v }),
 
   spec: [],
-  addSpec: (f) =>
-    set((s) => (s.spec.some((x) => x.key === f.key) ? s : { spec: [...s.spec, f] })),
+  addSpec: (f) => set((s) => (s.spec.some((x) => x.key === f.key) ? s : { spec: [...s.spec, f] })),
   resetSpec: () => set({ spec: [] }),
   specToInputs: () => {
     const inputs: Record<string, unknown> = {};
@@ -217,7 +216,12 @@ export const useMaestro = create<MaestroState>((set, get) => ({
         maestro: adjust(s.maestro),
         gmv: s.gmv + p.amount,
         log: [
-          { id: crypto.randomUUID(), text: `⚡ ${p.fromName} → ${p.toName}: ${p.amount} sats`, ts: Date.now(), kind: "info" as const },
+          {
+            id: crypto.randomUUID(),
+            text: `⚡ ${p.fromName} → ${p.toName}: ${p.amount} sats`,
+            ts: Date.now(),
+            kind: "info" as const,
+          },
           ...s.log,
         ].slice(0, 60),
       };

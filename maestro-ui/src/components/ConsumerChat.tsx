@@ -14,7 +14,12 @@ type Question = {
 export function ConsumerChat() {
   const { spec, addSpec, resetSpec, startJob, setView, pricing } = useMaestro();
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: "intro", role: "maestro", content: "Hey, I'm Maestro. Tell me what you need built and I'll hire the right agents to make it happen." },
+    {
+      id: "intro",
+      role: "maestro",
+      content:
+        "Hey, I'm Maestro. Tell me what you need built and I'll hire the right agents to make it happen.",
+    },
   ]);
   const [step, setStep] = useState(0);
   const [input, setInput] = useState("");
@@ -57,6 +62,7 @@ export function ConsumerChat() {
   const send = () => {
     const q = questions[step];
     if (!q) return;
+
     const userText = input.trim() || q.suggest;
     if (!userText) return;
 
@@ -65,6 +71,9 @@ export function ConsumerChat() {
     setThinking(true);
 
     setTimeout(async () => {
+      if (q.key === "request") {
+        addSpec({ key: "request", label: "Request", value: userText });
+      }
       if (q.key === "product_name") {
         addSpec({ key: "product_name", label: "Product", value: userText });
       }
@@ -80,13 +89,11 @@ export function ConsumerChat() {
         return;
       }
 
-      // We have enough inputs. Kick off planning/pricing via backend.
-      const req = (spec.find((f) => f.key === "request")?.value as string | undefined) ?? "";
-      const requestText = q.key === "request" ? userText : req || "Create a product video.";
-      if (q.key === "request") {
-        addSpec({ key: "request", label: "Request", value: requestText });
-      }
-
+      const requestText =
+        (q.key === "request"
+          ? userText
+          : (spec.find((f) => f.key === "request")?.value as string | undefined)) ??
+        "Create a product video.";
       const inputs: Record<string, unknown> = {};
       for (const f of [...spec, { key: q.key, label: q.key, value: userText } as any]) {
         if (f.key === "request") continue;
@@ -95,7 +102,11 @@ export function ConsumerChat() {
 
       setMessages((m) => [
         ...m,
-        { id: crypto.randomUUID(), role: "maestro", content: "Thanks. I’ll plan the job and quote the exact price." },
+        {
+          id: crypto.randomUUID(),
+          role: "maestro",
+          content: "Thanks. I’ll plan the job and quote the exact price.",
+        },
       ]);
 
       try {
@@ -111,7 +122,11 @@ export function ConsumerChat() {
         setThinking(false);
         setMessages((m) => [
           ...m,
-          { id: crypto.randomUUID(), role: "maestro", content: "I hit an error creating the job. Check that the backend is running." },
+          {
+            id: crypto.randomUUID(),
+            role: "maestro",
+            content: "I hit an error creating the job. Check that the backend is running.",
+          },
         ]);
       }
     }, 550);
@@ -120,11 +135,11 @@ export function ConsumerChat() {
   const ready = step >= questions.length;
   const currentPrompt = questions[step]?.placeholder ?? "Tell Maestro what you need…";
   const suggested = questions[Math.max(0, step)]?.suggest ?? "";
-  const quoteSats = pricing?.total ?? (ready ? 0 : Math.min(spec.length * 1, 3));
+  const quoteSats = pricing?.total ?? 0;
 
   return (
-    <div className="grid-bg min-h-[calc(100svh-65px)]">
-      <div className="mx-auto grid max-w-[1400px] gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_380px]">
+    <div className="grid-bg h-[calc(100svh-65px)] overflow-hidden">
+      <div className="mx-auto grid h-full max-w-[1400px] gap-4 overflow-hidden px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_380px]">
         {/* CHAT */}
         <div className="flex h-[calc(100svh-130px)] min-h-[480px] flex-col rounded-2xl border border-border bg-surface/60 shadow-elevated backdrop-blur lg:h-[calc(100svh-130px)]">
           <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
@@ -134,10 +149,14 @@ export function ConsumerChat() {
               </div>
               <div>
                 <div className="text-sm font-semibold leading-none">Maestro</div>
-                <div className="mt-1 font-mono text-[10px] text-muted-foreground leading-none">orchestrator · online</div>
+                <div className="mt-1 font-mono text-[10px] text-muted-foreground leading-none">
+                  orchestrator · online
+                </div>
               </div>
             </div>
-            <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground">end-to-end · sub-second settlement</span>
+            <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground">
+              end-to-end · sub-second settlement
+            </span>
           </div>
 
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-5">
@@ -161,7 +180,11 @@ export function ConsumerChat() {
                 </motion.div>
               ))}
               {thinking && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex justify-start"
+                >
                   <div className="flex gap-1 rounded-2xl rounded-bl-sm border border-border bg-surface-elevated px-4 py-3">
                     {[0, 0.2, 0.4].map((d) => (
                       <motion.span
@@ -225,7 +248,7 @@ export function ConsumerChat() {
         </div>
 
         {/* SPEC PANEL */}
-        <div className="rounded-2xl border border-border bg-surface/60 p-5 shadow-elevated backdrop-blur">
+        <div className="h-[calc(100svh-130px)] overflow-y-auto rounded-2xl border border-border bg-surface/60 p-5 shadow-elevated backdrop-blur">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-mono text-xs tracking-wider text-muted-foreground">JOB SPEC</h3>
             <span className="font-mono text-[10px] text-muted-foreground">
@@ -260,7 +283,9 @@ export function ConsumerChat() {
 
           <div className="mt-6 rounded-lg border border-border bg-background/40 p-3">
             <div className="mb-1 flex items-center justify-between">
-              <span className="font-mono text-[10px] tracking-wider text-muted-foreground">ESTIMATED COST</span>
+              <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                ESTIMATED COST
+              </span>
               <Zap className="h-3 w-3 text-lightning" fill="currentColor" />
             </div>
             <div className="font-mono text-2xl font-bold text-lightning">

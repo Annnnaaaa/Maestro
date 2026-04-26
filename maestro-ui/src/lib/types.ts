@@ -1,4 +1,11 @@
-export type AgentId = "maestro" | "script" | "voice" | "visual" | "consumer" | "agent-consumer" | string;
+export type AgentId =
+  | "maestro"
+  | "script"
+  | "voice"
+  | "visual"
+  | "consumer"
+  | "agent-consumer"
+  | string;
 
 export type AgentType = "ORCHESTRATOR" | "SPECIALIST";
 
@@ -6,8 +13,8 @@ export interface Agent {
   id: AgentId;
   name: string;
   agent_type: AgentType;
-  capability: string;          // human-readable capability label
-  capability_tags: string[];   // machine tags used for matching
+  capability: string; // human-readable capability label
+  capability_tags: string[]; // machine tags used for matching
   specialty: string;
   fee: number;
   balance: number;

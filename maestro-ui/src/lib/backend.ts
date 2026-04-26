@@ -11,8 +11,20 @@ type AgentManifest = {
 
 export type MaestroJobResponse =
   | { status: "no_capability_match"; reason: string }
-  | { status: "missing_inputs"; missing_inputs: string[]; for_agent: string; plan: unknown; pricing?: unknown }
-  | { status: "ready"; jobId: string; plan: unknown; pricing: { subtotal: number; margin: number; total: number }; invoice: { invoice: string; payment_hash: string } };
+  | {
+      status: "missing_inputs";
+      missing_inputs: string[];
+      for_agent: string;
+      plan: unknown;
+      pricing?: unknown;
+    }
+  | {
+      status: "ready";
+      jobId: string;
+      plan: unknown;
+      pricing: { subtotal: number; margin: number; total: number };
+      invoice: { invoice: string; payment_hash: string };
+    };
 
 export type ProgressEvent =
   | { step: "planning"; plan?: unknown }
@@ -68,7 +80,10 @@ export async function fetchMaestro(): Promise<Agent> {
   return toUiAgent(data);
 }
 
-export async function submitJob(request: string, inputs: Record<string, unknown>): Promise<MaestroJobResponse> {
+export async function submitJob(
+  request: string,
+  inputs: Record<string, unknown>,
+): Promise<MaestroJobResponse> {
   const res = await fetch(`${backendBase()}/api/maestro/job`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -78,15 +93,22 @@ export async function submitJob(request: string, inputs: Record<string, unknown>
 }
 
 export async function markJobPaid(jobId: string): Promise<unknown> {
-  const res = await fetch(`${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/mark-paid`, {
-    method: "POST",
-  });
+  const res = await fetch(
+    `${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/mark-paid`,
+    { method: "POST" },
+  );
   if (!res.ok) throw new Error(`mark-paid: ${res.status}`);
   return await res.json();
 }
 
-export async function streamExecute(jobId: string, onEvent: (e: ProgressEvent) => void): Promise<void> {
-  const res = await fetch(`${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/execute`, { method: "POST" });
+export async function streamExecute(
+  jobId: string,
+  onEvent: (e: ProgressEvent) => void,
+): Promise<void> {
+  const res = await fetch(
+    `${backendBase()}/api/maestro/job/${encodeURIComponent(jobId)}/execute`,
+    { method: "POST" },
+  );
   if (!res.ok || !res.body) throw new Error(`execute: ${res.status}`);
 
   const reader = res.body.getReader();
@@ -111,4 +133,3 @@ export async function streamExecute(jobId: string, onEvent: (e: ProgressEvent) =
     }
   }
 }
-

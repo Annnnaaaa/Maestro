@@ -1,19 +1,47 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMaestro } from "@/lib/store";
 import { AnimatedCounter } from "./AnimatedCounter";
-import { Zap, Bot, User, Wand2, Plus, X, CheckCircle2, Loader2, Sparkles, Crown } from "lucide-react";
+import {
+  Zap,
+  Bot,
+  User,
+  Wand2,
+  Plus,
+  X,
+  CheckCircle2,
+  Loader2,
+  Sparkles,
+  Crown,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Agent } from "@/lib/types";
 import { TRANSLATION_AGENT_MANIFEST } from "@/lib/maestro-mock";
 
 export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) {
   const {
-    jobNumber, jobTitle, jobRequest, jobStatus, maestroAction,
-    maestro, agents, payments, log,
-    consumerKind, videoReady, consumerPaid, payMaestro,
-    incomingAgentRequest, setIncomingAgentRequest, startJob, resetForNextJob,
-    requiredTags, matchedAgentIds, capabilityToast, setCapabilityToast,
-    pricing, finalVideoUrl,
+    jobNumber,
+    jobTitle,
+    jobRequest,
+    jobStatus,
+    maestroAction,
+    maestro,
+    agents,
+    payments,
+    log,
+    consumerKind,
+    videoReady,
+    consumerPaid,
+    payMaestro,
+    incomingAgentRequest,
+    setIncomingAgentRequest,
+    startJob,
+    resetForNextJob,
+    requiredTags,
+    matchedAgentIds,
+    capabilityToast,
+    setCapabilityToast,
+    pricing,
+    finalVideoUrl,
   } = useMaestro();
 
   // Auto-dismiss capability toast
@@ -26,8 +54,8 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
   const planning = jobStatus === "planning";
 
   return (
-    <div className="grid-bg min-h-[calc(100svh-65px)]">
-      <div className="mx-auto max-w-[1600px] space-y-4 px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6">
+    <div className="grid-bg h-[calc(100svh-65px)] overflow-hidden">
+      <div className="mx-auto h-full max-w-[1600px] space-y-4 overflow-y-auto px-3 py-4 sm:space-y-6 sm:px-6 sm:py-6">
         {/* Banner */}
         <motion.div
           layout
@@ -47,11 +75,13 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
           </div>
         </motion.div>
 
-        {/* MARKETPLACE — full-width grid of agent cards */}
+        {/* MARKETPLACE - full-width grid of agent cards */}
         <div className="rounded-2xl border border-border bg-surface/60 p-4 shadow-elevated sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground">AGENT MARKETPLACE</h3>
+              <h3 className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground">
+                AGENT MARKETPLACE
+              </h3>
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                 {agents.length + 1} agents registered · 1 orchestrator · {agents.length} specialists
               </p>
@@ -75,16 +105,12 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
             <AnimatePresence>
               {agents.map((a) => {
                 const isMatch = matchedAgentIds.includes(a.id);
-                const dim = (planning || jobStatus === "in_progress") && matchedAgentIds.length > 0 && !isMatch;
+                const dim =
+                  (planning || jobStatus === "in_progress") &&
+                  matchedAgentIds.length > 0 &&
+                  !isMatch;
                 const highlight = (planning || jobStatus === "in_progress") && isMatch;
-                return (
-                  <AgentCard
-                    key={a.id}
-                    agent={a}
-                    dimmed={dim}
-                    highlighted={highlight}
-                  />
-                );
+                return <AgentCard key={a.id} agent={a} dimmed={dim} highlighted={highlight} />;
               })}
             </AnimatePresence>
           </div>
@@ -124,27 +150,36 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
                         <span className="text-muted-foreground">→</span>
                         <span className="text-xs font-medium">{p.toName}</span>
                       </div>
-                      <span className="font-mono text-sm font-bold text-lightning">+{p.amount}</span>
+                      <span className="font-mono text-sm font-bold text-lightning">
+                        +{p.amount}
+                      </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="font-mono text-[10px] text-muted-foreground truncate">{p.memo}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{timeAgo(p.timestamp)}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground truncate">
+                        {p.memo}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {timeAgo(p.timestamp)}
+                      </span>
                     </div>
                     <div className="mt-1 font-mono text-[9px] text-muted-foreground/70 truncate">
                       hash: {p.hash}
                     </div>
                   </motion.div>
                 ))}
-                {log.filter((l) => !l.text.startsWith("⚡")).slice(0, 10).map((l) => (
-                  <motion.div
-                    key={l.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="rounded-md border border-border/50 bg-background/30 px-3 py-1.5 font-mono text-[10px] text-muted-foreground"
-                  >
-                    › {l.text}
-                  </motion.div>
-                ))}
+                {log
+                  .filter((l) => !l.text.startsWith("⚡"))
+                  .slice(0, 10)
+                  .map((l) => (
+                    <motion.div
+                      key={l.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="rounded-md border border-border/50 bg-background/30 px-3 py-1.5 font-mono text-[10px] text-muted-foreground"
+                    >
+                      › {l.text}
+                    </motion.div>
+                  ))}
               </AnimatePresence>
             </div>
           </div>
@@ -178,7 +213,8 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
               <span className="text-sm font-semibold">Incoming agent request</span>
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
-              <span className="font-mono text-agent">MarketingBot</span> wants to hire you for an explainer video. Auto-handle?
+              <span className="font-mono text-agent">MarketingBot</span> wants to hire you for an
+              explainer video. Auto-handle?
             </p>
             <div className="flex gap-2">
               <button
@@ -201,7 +237,7 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
                 }}
                 className="flex-1 rounded-lg bg-agent/20 py-2 text-xs font-semibold text-agent hover:bg-agent/30 border border-agent/40"
               >
-                Yes — auto-handle
+                Yes - auto-handle
               </button>
               <button
                 onClick={() => setIncomingAgentRequest(false)}
@@ -241,7 +277,11 @@ export function OperationsDashboard({ onAddAgent }: { onAddAgent: () => void }) 
 /* ────────────────────────────────────────────────────────────── */
 
 function PlanningOverlay({
-  request, requiredTags, matched, agents, maestroAction,
+  request,
+  requiredTags,
+  matched,
+  agents,
+  maestroAction,
 }: {
   request: string;
   requiredTags: string[];
@@ -258,7 +298,9 @@ function PlanningOverlay({
     >
       <div className="w-full max-w-3xl space-y-4 py-4 sm:space-y-5 sm:py-0">
         <div className="text-center">
-          <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">PLANNING</div>
+          <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+            PLANNING
+          </div>
           <h2 className="mt-1 text-lg font-bold sm:text-xl">Maestro is matching capabilities…</h2>
         </div>
 
@@ -281,10 +323,17 @@ function PlanningOverlay({
           transition={{ delay: 0.2 }}
           className="mx-auto flex w-fit items-center gap-3 rounded-2xl border border-lightning/60 bg-surface px-5 py-3 shadow-lightning animate-pulse-glow"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-lightning text-xl">🪄</div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-lightning text-xl">
+            🪄
+          </div>
           <div>
             <div className="text-sm font-bold">Maestro</div>
-            <motion.div key={maestroAction} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-mono text-[10px] text-lightning">
+            <motion.div
+              key={maestroAction}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="font-mono text-[10px] text-lightning"
+            >
               {maestroAction}
             </motion.div>
           </div>
@@ -292,7 +341,9 @@ function PlanningOverlay({
 
         {/* Required tags */}
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="font-mono text-[10px] tracking-wider text-muted-foreground">REQUIRES:</span>
+          <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+            REQUIRES:
+          </span>
           {requiredTags.map((t) => (
             <motion.span
               key={t}
@@ -349,7 +400,8 @@ function PlanningOverlay({
             className="mx-auto max-w-md rounded-xl border border-lightning/40 bg-lightning/5 p-3 text-center"
           >
             <p className="text-sm font-semibold">
-              Plan: Maestro will hire <span className="text-lightning">{matched.length}</span> specialists
+              Plan: Maestro will hire <span className="text-lightning">{matched.length}</span>{" "}
+              specialists
             </p>
             <p className="mt-1 font-mono text-[10px] text-muted-foreground">
               executing in moments…
@@ -417,20 +469,38 @@ function AgentTypeBadge({ type }: { type: "ORCHESTRATOR" | "SPECIALIST" }) {
 function StatusBadge({ status }: { status: Agent["status"] }) {
   const m = {
     idle: { label: "IDLE", cls: "text-muted-foreground border-border", icon: null },
-    hired: { label: "HIRED", cls: "text-lightning border-lightning/50", icon: <Zap className="h-2.5 w-2.5" fill="currentColor" /> },
-    working: { label: "WORKING", cls: "text-electric border-electric/50", icon: <Loader2 className="h-2.5 w-2.5 animate-spin" /> },
-    done: { label: "DONE", cls: "text-success border-success/50", icon: <CheckCircle2 className="h-2.5 w-2.5" /> },
+    hired: {
+      label: "HIRED",
+      cls: "text-lightning border-lightning/50",
+      icon: <Zap className="h-2.5 w-2.5" fill="currentColor" />,
+    },
+    working: {
+      label: "WORKING",
+      cls: "text-electric border-electric/50",
+      icon: <Loader2 className="h-2.5 w-2.5 animate-spin" />,
+    },
+    done: {
+      label: "DONE",
+      cls: "text-success border-success/50",
+      icon: <CheckCircle2 className="h-2.5 w-2.5" />,
+    },
   } as const;
   const s = m[status];
   return (
-    <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px] tracking-wider ${s.cls}`}>
+    <span
+      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px] tracking-wider ${s.cls}`}
+    >
       {s.icon} {s.label}
     </span>
   );
 }
 
 function AgentCard({
-  agent, isMaestro, action, dimmed, highlighted,
+  agent,
+  isMaestro,
+  action,
+  dimmed,
+  highlighted,
 }: {
   agent: Agent;
   isMaestro?: boolean;
@@ -465,14 +535,18 @@ function AgentCard({
       <div className="relative">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className={`flex h-11 w-11 items-center justify-center rounded-xl text-2xl ${
-              isMaestro ? "gradient-lightning" : "bg-background border border-border"
-            }`}>
+            <div
+              className={`flex h-11 w-11 items-center justify-center rounded-xl text-2xl ${
+                isMaestro ? "gradient-lightning" : "bg-background border border-border"
+              }`}
+            >
               {agent.avatar}
             </div>
             <div className="min-w-0">
               <div className="font-semibold text-sm truncate">{agent.name}</div>
-              <div className="font-mono text-[9px] text-muted-foreground truncate">{agent.pubkey}</div>
+              <div className="font-mono text-[9px] text-muted-foreground truncate">
+                {agent.pubkey}
+              </div>
             </div>
           </div>
           <AgentTypeBadge type={agent.agent_type} />
@@ -497,7 +571,12 @@ function AgentCard({
             <div className="flex items-center gap-1.5 font-mono text-[9px] tracking-wider text-muted-foreground">
               <Wand2 className="h-3 w-3 text-lightning" /> CURRENT ACTION
             </div>
-            <motion.div key={action} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-0.5 text-xs">
+            <motion.div
+              key={action}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-0.5 text-xs"
+            >
               {action}
             </motion.div>
           </div>
@@ -506,7 +585,9 @@ function AgentCard({
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] text-muted-foreground">fee</span>
-            <span className={`font-mono text-xs font-bold ${isMaestro ? "text-lightning" : "text-lightning"}`}>
+            <span
+              className={`font-mono text-xs font-bold ${isMaestro ? "text-lightning" : "text-lightning"}`}
+            >
               {agent.fee} sats
             </span>
           </div>
@@ -515,11 +596,19 @@ function AgentCard({
 
         <div className="mt-2 flex items-center justify-between rounded-lg border border-border bg-background/50 px-2.5 py-1.5">
           <div className="flex items-center gap-1">
-            <Zap className={`h-3 w-3 ${isMaestro ? "text-lightning" : "text-electric"}`} fill="currentColor" />
-            <span className="font-mono text-[9px] tracking-wider text-muted-foreground">WALLET</span>
+            <Zap
+              className={`h-3 w-3 ${isMaestro ? "text-lightning" : "text-electric"}`}
+              fill="currentColor"
+            />
+            <span className="font-mono text-[9px] tracking-wider text-muted-foreground">
+              WALLET
+            </span>
           </div>
-          <div className={`font-mono text-sm font-bold ${isMaestro ? "text-lightning" : "text-electric"}`}>
-            <AnimatedCounter value={agent.balance} /> <span className="text-[10px] text-muted-foreground">sats</span>
+          <div
+            className={`font-mono text-sm font-bold ${isMaestro ? "text-lightning" : "text-electric"}`}
+          >
+            <AnimatedCounter value={agent.balance} />{" "}
+            <span className="text-[10px] text-muted-foreground">sats</span>
           </div>
         </div>
       </div>
@@ -528,7 +617,11 @@ function AgentCard({
 }
 
 function FinalOutput({
-  ready, paid, onPay, onNext, jobStatus,
+  ready,
+  paid,
+  onPay,
+  onNext,
+  jobStatus,
   pricing,
   videoUrl,
 }: {
@@ -598,9 +691,13 @@ function FinalOutput({
             </div>
             <div className="flex flex-col justify-between rounded-xl border border-border bg-background/50 p-4">
               <div>
-                <div className="font-mono text-[10px] tracking-wider text-muted-foreground">DELIVERABLE</div>
-                <div className="text-lg font-semibold">Ember Mug — Cinematic Cut</div>
-                <div className="mt-1 font-mono text-[10px] text-muted-foreground">15s · 9:16 · MP4 · 4.2 MB</div>
+                <div className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                  DELIVERABLE
+                </div>
+                <div className="text-lg font-semibold">Ember Mug - Cinematic Cut</div>
+                <div className="mt-1 font-mono text-[10px] text-muted-foreground">
+                  15s · 9:16 · MP4 · 4.2 MB
+                </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <Tile k="SPENT" v={String(spent)} />
@@ -620,7 +717,7 @@ function FinalOutput({
                   onClick={onNext}
                   className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-success/50 bg-success/10 px-5 py-3 font-semibold text-success"
                 >
-                  <CheckCircle2 className="h-4 w-4" /> Paid — start next job
+                  <CheckCircle2 className="h-4 w-4" /> Paid - start next job
                 </button>
               )}
             </div>
@@ -649,12 +746,22 @@ function timeAgo(ts: number) {
 
 /* ────────────── Add Agent Modal ────────────── */
 
-const REQUIRED_FIELDS = ["id", "name", "agent_type", "capability", "capability_tags", "fee"] as const;
+const REQUIRED_FIELDS = [
+  "id",
+  "name",
+  "agent_type",
+  "capability",
+  "capability_tags",
+  "fee",
+] as const;
 
 export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { upsertAgent, setCapabilityToast } = useMaestro();
   const [text, setText] = useState(JSON.stringify(TRANSLATION_AGENT_MANIFEST, null, 2));
   const [err, setErr] = useState<string | null>(null);
+
+  const isRecord = (v: unknown): v is Record<string, unknown> =>
+    typeof v === "object" && v !== null && !Array.isArray(v);
 
   // Reset to translation manifest each time modal opens
   useEffect(() => {
@@ -665,13 +772,19 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
   }, [open]);
 
   const submit = async () => {
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
       setErr("Invalid JSON");
       return;
     }
+
+    if (!isRecord(parsed)) {
+      setErr("Manifest must be a JSON object");
+      return;
+    }
+
     const missing = REQUIRED_FIELDS.filter((f) => parsed[f] === undefined || parsed[f] === null);
     if (missing.length) {
       setErr(`Missing required field(s): ${missing.join(", ")}`);
@@ -688,7 +801,8 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
 
     // POST to /api/marketplace (best-effort; ignore failure for demo)
     try {
-      const base = (import.meta as any).env?.VITE_BACKEND_URL ?? (import.meta as any).env?.NEXT_PUBLIC_BACKEND_URL;
+      const env = import.meta.env as Record<string, string | undefined>;
+      const base = env.VITE_BACKEND_URL ?? env.NEXT_PUBLIC_BACKEND_URL;
       if (base) {
         await fetch(`${base}/api/marketplace`, {
           method: "POST",
@@ -696,14 +810,16 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
           body: JSON.stringify(parsed),
         }).catch(() => {});
       }
-    } catch { /* noop */ }
+    } catch {
+      /* noop */
+    }
 
     upsertAgent({
       id: String(parsed.id),
       name: String(parsed.name),
       agent_type: parsed.agent_type,
       capability: String(parsed.capability),
-      capability_tags: parsed.capability_tags.map((t: any) => String(t)),
+      capability_tags: parsed.capability_tags.map((t: unknown) => String(t)),
       specialty: String(parsed.capability),
       fee: Number(parsed.fee),
       balance: Number(parsed.balance ?? 100),
@@ -715,7 +831,9 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
 
     // Capability detection toast
     const headlineTag = parsed.capability_tags[0];
-    setCapabilityToast(`+ ${headlineTag} — Maestro can now route ${headlineTag} jobs to ${parsed.name}.`);
+    setCapabilityToast(
+      `+ ${headlineTag} - Maestro can now route ${headlineTag} jobs to ${parsed.name}.`,
+    );
     onClose();
   };
 
@@ -728,12 +846,16 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
           onClick={onClose}
         >
           <motion.div
-            initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+            initial={{ scale: 0.95, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.95, y: 20 }}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-elevated"
           >
@@ -747,7 +869,11 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
               </button>
             </div>
             <p className="mb-2 text-xs text-muted-foreground">
-              Paste a manifest (JSON). Required: <span className="font-mono text-foreground">id, name, agent_type, capability, capability_tags, fee</span>.
+              Paste a manifest (JSON). Required:{" "}
+              <span className="font-mono text-foreground">
+                id, name, agent_type, capability, capability_tags, fee
+              </span>
+              .
             </p>
             <button
               onClick={loadTranslationDemo}
@@ -757,16 +883,25 @@ export function AddAgentModal({ open, onClose }: { open: boolean; onClose: () =>
             </button>
             <textarea
               value={text}
-              onChange={(e) => { setText(e.target.value); setErr(null); }}
+              onChange={(e) => {
+                setText(e.target.value);
+                setErr(null);
+              }}
               spellCheck={false}
               className="h-72 w-full rounded-lg border border-border bg-background p-3 font-mono text-xs outline-none focus:border-electric"
             />
             {err && <p className="mt-2 font-mono text-xs text-destructive">{err}</p>}
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground">
+              <button
+                onClick={onClose}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
                 Cancel
               </button>
-              <button onClick={submit} className="rounded-lg gradient-electric px-4 py-2 text-sm font-bold text-accent-foreground shadow-electric">
+              <button
+                onClick={submit}
+                className="rounded-lg gradient-electric px-4 py-2 text-sm font-bold text-accent-foreground shadow-electric"
+              >
                 Add agent
               </button>
             </div>
