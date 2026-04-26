@@ -31,6 +31,17 @@ export type ExecutionPlan =
 
 const PLANNER_SYSTEM_PROMPT = `You are Maestro's planner. You receive a task request and a list of capabilities currently available in the marketplace. Output a JSON plan with steps[]. Each step has: capability_needed, why, expected_output_field. If the marketplace cannot support this task, return { feasible: false, reason: "..." }. Output only JSON, no prose.`;
 
+const AGENT_SELECTOR_SYSTEM_PROMPT = `You are Maestro's agent selector.
+Given a task request, a capability needed, and multiple candidate agents with pricing and descriptions, select the best agent(s) to run.
+
+Rules:
+- Output ONLY JSON.
+- Return { "selected_agent_ids": string[], "reason": string }.
+- Prefer 1 agent. Choose multiple only if it materially improves quality, robustness, or speed (e.g. parallel alternatives, fallback provider).
+- Never select more than 3 agents.
+- Consider required_inputs compatibility with the available consumer inputs.
+`;
+
 function safeJsonParse(raw: string): unknown {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -60,6 +71,65 @@ type ClaudePlan =
   | { feasible: false; reason: string }
   | { steps: ClaudeStep[] }
   | { feasible: true; steps: ClaudeStep[] };
+
+type SelectorResult = { selected_agent_ids: string[]; reason?: string };
+
+async function pickAgentsWithLLM(args: {
+  capability: string;
+  request: string;
+  consumerInputs: Record<string, unknown>;
+  candidates: AgentManifest[];
+}): Promise<{ chosen: AgentManifest[]; reason: string }> {
+  const { capability, request, consumerInputs, candidates } = args;
+  if (candidates.length <= 1) return { chosen: candidates, reason: "only candidate" };
+
+  // If no LLM key is present, fall back to existing cheapest-choice logic.
+  if (!process.env.ANTHROPIC_API_KEY) {
+    const cheapest = await pickBestAgent(capability);
+    return {
+      chosen: cheapest ? [cheapest] : [candidates[0]!],
+      reason: "LLM not configured; picked cheapest candidate",
+    };
+  }
+
+  const candidateSummary = candidates.map((a) => ({
+    agent_id: a.agent_id,
+    capability: a.capability,
+    capability_tags: a.capability_tags,
+    description: a.description,
+    required_inputs: Object.keys(a.required_inputs),
+    outputs: Object.keys(a.outputs),
+    pricing_sats: a.pricing.base_sats,
+    typical_completion_seconds: a.typical_completion_seconds,
+  }));
+
+  const availableInputKeys = Object.keys(consumerInputs ?? {});
+  const userPrompt = `Task request:\n${request}\n\nCapability needed:\n${capability}\n\nAvailable consumer input keys:\n${JSON.stringify(
+    availableInputKeys
+  )}\n\nCandidate agents:\n${JSON.stringify(candidateSummary, null, 2)}`;
+
+  try {
+    const raw = await askLLM(AGENT_SELECTOR_SYSTEM_PROMPT, userPrompt);
+    const parsed = safeJsonParse(raw) as SelectorResult | null;
+    const ids = parsed?.selected_agent_ids ?? [];
+    const unique = Array.from(new Set(ids)).slice(0, 3);
+    const chosen = unique
+      .map((id) => candidates.find((c) => c.agent_id === id))
+      .filter(Boolean) as AgentManifest[];
+
+    if (chosen.length > 0) {
+      return { chosen, reason: parsed?.reason?.toString() ?? "selected by LLM" };
+    }
+  } catch {
+    // ignore and fall back
+  }
+
+  const cheapest = await pickBestAgent(capability);
+  return {
+    chosen: cheapest ? [cheapest] : [candidates[0]!],
+    reason: "LLM selection failed; picked cheapest candidate",
+  };
+}
 
 function buildInputsForAgent(
   agent: AgentManifest,
@@ -116,25 +186,43 @@ async function assemblePlan(
   for (let i = 0; i < capabilities.length; i += 1) {
     const cap = capabilities[i];
     const candidates = await getAgentsByCapability(cap);
-    const agent = await pickBestAgent(cap);
-    if (!agent) {
+    if (candidates.length === 0) {
       return {
         feasible: false,
         reason: `No agent available for capability: ${cap}`,
       };
     }
 
-    steps.push({
-      step_id: `s${i + 1}_${agent.agent_id}`,
-      agent_id: agent.agent_id,
+    const { chosen, reason } = await pickAgentsWithLLM({
       capability: cap,
-      fee_sats: agent.pricing.base_sats,
-      inputs_for_agent: buildInputsForAgent(agent, request, consumerInputs, priorOutputs),
-      selection_rationale: rationaleFor(cap, candidates, agent),
+      request,
+      consumerInputs,
+      candidates,
     });
+    if (!chosen.length) {
+      return { feasible: false, reason: `No agent could be selected for capability: ${cap}` };
+    }
 
-    for (const outKey of Object.keys(agent.outputs)) {
-      priorOutputs[outKey] = `<from:${agent.agent_id}>`;
+    for (const agent of chosen) {
+      steps.push({
+        step_id: `s${steps.length + 1}_${agent.agent_id}`,
+        agent_id: agent.agent_id,
+        capability: cap,
+        fee_sats: agent.pricing.base_sats,
+        inputs_for_agent: buildInputsForAgent(agent, request, consumerInputs, priorOutputs),
+        selection_rationale: {
+          ...rationaleFor(cap, candidates, agent),
+          message: `Selected ${agent.agent_id}: ${reason} (${candidates.length} candidates).`,
+        },
+      });
+
+      for (const outKey of Object.keys(agent.outputs)) {
+        if (priorOutputs[outKey] === undefined) {
+          priorOutputs[outKey] = `<from:${agent.agent_id}>`;
+        } else {
+          priorOutputs[`${outKey}_${agent.agent_id}`] = `<from:${agent.agent_id}>`;
+        }
+      }
     }
   }
 

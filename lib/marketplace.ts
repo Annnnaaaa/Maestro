@@ -31,67 +31,67 @@ const PLACEHOLDER_MANIFESTS: AgentManifest[] = [
     endpoint: "http://localhost:3004/api/agent/json2video",
   },
   {
-    agent_id: "script-agent",
+    agent_id: "script-agent-v1",
     agent_type: "specialist",
     capability: "video_script_writing",
-    capability_tags: ["script", "copywriting", "narrative"],
-    description: "Writes video scripts from a product brief.",
+    capability_tags: ["text", "video", "marketing", "creative"],
+    description: "Generates a 15-second spoken product video script (max 50 words).",
     required_inputs: {
       product_name: { type: "string", description: "Product name" },
-      product_description: { type: "string", description: "What the product does" },
+      product_description: { type: "string", description: "Product description" },
+      target_audience: { type: "string", description: "Who this is for" },
+      voiceover_tone: { type: "string", description: "Tone of voiceover (e.g. warm, playful)" },
     },
     optional_inputs: {
-      target_audience: { type: "string", description: "Who the video is for" },
       duration_seconds: { type: "number", description: "Target duration" },
     },
     context_gathering: { supported: false, sources: [] },
     outputs: {
-      script: { type: "string", description: "Final spoken script" },
-      scenes: { type: "array", description: "Scene-by-scene breakdown" },
+      script: { type: "string", description: "Spoken script, max 50 words" },
     },
     pricing: { base_sats: 15 },
-    typical_completion_seconds: 6,
+    typical_completion_seconds: 5,
     endpoint: "http://localhost:3001/api/agent/script",
   },
   {
-    agent_id: "voice-agent",
+    agent_id: "voice-agent-v1",
     agent_type: "specialist",
     capability: "voiceover_generation",
-    capability_tags: ["voice", "tts", "audio"],
-    description: "Generates a voiceover audio track from a script.",
+    capability_tags: ["audio", "tts", "voice"],
+    description: "Turns a script into a short MP3 voiceover using OpenAI TTS.",
     required_inputs: {
       script: { type: "string", description: "Script to read aloud" },
+      voiceover_tone: { type: "string", description: "Tone (warm/playful or cinematic)" },
     },
-    optional_inputs: {
-      voiceover_tone: { type: "string", description: "e.g. warm, energetic" },
-    },
+    optional_inputs: {},
     context_gathering: { supported: false, sources: [] },
     outputs: {
       audio_url: { type: "string", description: "URL to the generated audio" },
+      duration_ms: { type: "number", description: "Duration in milliseconds" },
     },
     pricing: { base_sats: 8 },
-    typical_completion_seconds: 5,
+    typical_completion_seconds: 4,
     endpoint: "http://localhost:3002/api/agent/voice",
   },
   {
-    agent_id: "visual-agent",
+    agent_id: "visual-agent-v1",
     agent_type: "specialist",
     capability: "video_visual_generation",
-    capability_tags: ["visual", "video", "render"],
-    description: "Renders the visual track of a product video.",
+    capability_tags: ["video", "image", "visual", "assembly"],
+    description:
+      "Generates (or falls back to) a short slideshow-style video based on product spec, script, and audio.",
     required_inputs: {
-      scenes: { type: "array", description: "Scene breakdown to render" },
+      spec: { type: "object", description: "Product/video spec used for prompt generation" },
+      script: { type: "string", description: "Spoken script" },
+      audio_url: { type: "string", description: "Public URL to the voiceover MP3" },
     },
-    optional_inputs: {
-      style: { type: "string", description: "cinematic | playful | minimal" },
-      visual_context: { type: "string", description: "Aesthetic guidance / brand cues" },
-    },
+    optional_inputs: {},
     context_gathering: { supported: false, sources: [] },
     outputs: {
       video_url: { type: "string", description: "URL to the rendered video" },
     },
     pricing: { base_sats: 45 },
-    typical_completion_seconds: 12,
+    typical_completion_seconds: 20,
     endpoint: "http://localhost:3003/api/agent/visual",
   },
 ];
@@ -164,6 +164,9 @@ export async function seedFromEndpoints(): Promise<void> {
         const fetched = (await res.json()) as AgentManifest;
         if (isManifest(fetched)) {
           fetched.endpoint = a.endpoint;
+          // Replace the placeholder entry keyed by `a.agent_id` (if present),
+          // and store the fetched manifest under its real agent_id.
+          store().delete(a.agent_id);
           store().set(fetched.agent_id, fetched);
         }
       } catch {
